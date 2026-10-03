@@ -14,7 +14,10 @@ A public analytics and design tool that ranks every Meteora Dynamic Bonding Curv
 - A live feed of new DBC launches and graduations from Solami's Blur stream, tagged with their setting group.
 
 ## How I use AI coding tools
-I build with Claude Code: it writes the spec and plan, implements test-first (87 unit tests so far, including decoder tests against Meteora SDK fixtures from mainnet), and debugs live data issues. Examples: tracing a 15-day slot-time drift that hid instant graduations, and a V8 string-retention memory leak in the streaming indexer. The grant covers the AI coding subscription for the build month.
+I build with Claude Code: it writes the spec and plan, implements test-first (120 unit tests, including decoder tests against Meteora SDK fixtures from mainnet), and debugs live data issues. Examples: tracing a 15-day slot-time drift that hid instant graduations, and a V8 string-retention memory leak in the streaming indexer. The grant covers the AI coding subscription for the build month.
+
+## First findings
+52.5% of DBC launches come from pre-funded launchpads, only 1.3% of open-market launches graduate, and 46% of graduated tokens trade below 10% of their graduation price.
 
 ## Solana integration
 - Reads mainnet accounts of the DBC program `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` (pools, configs) and block times.
@@ -22,7 +25,7 @@ I build with Claude Code: it writes the spec and plan, implements test-first (87
 - Streams live launches from Solami (Solana infrastructure).
 
 ## Milestones
-- Oct 3–5: indexer + leaderboard (done: indexer, leaderboard, detail pages, designer)
+- Oct 3–5: indexer + leaderboard (done: full mainnet index of 1.73M launches, leaderboard, detail pages, designer, after-graduation view on DAMM v2, live feed)
 - Oct 6–9: live feed on Solami, deployment, devnet creation from the browser
 - Oct 10–12: polish, demo video, submission to Colosseum Crypto World's Fair (Meteora DBC, Solami and Superteam India tracks)
 

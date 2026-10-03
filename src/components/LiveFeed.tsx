@@ -6,22 +6,48 @@ import type { LiveEvent } from '@/lib/live/normalize';
 
 const RELAY = process.env.NEXT_PUBLIC_RELAY_URL;
 
+const SOURCE_LABEL: Record<string, string> = {
+  solami: 'streamed by Solami Blur',
+  rpc: 'streamed from Solana RPC (logsSubscribe)',
+  mock: 'MOCK DATA (development only)',
+};
+
 export function LiveFeed() {
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [status, setStatus] = useState<'connecting' | 'live' | 'offline'>(RELAY ? 'connecting' : 'offline');
+  const [source, setSource] = useState<string | null>(null);
   const [, tick] = useState(0);
   useEffect(() => {
     if (!RELAY) return;
-    const es = new EventSource(`${RELAY}/events`);
-    es.onopen = () => setStatus('live');
-    es.onerror = () => setStatus('connecting');
-    es.onmessage = (m) => {
-      const ev = JSON.parse(m.data) as LiveEvent;
-      setEvents((prev) => [ev, ...prev.filter((p) => !(p.kind === ev.kind && p.mint === ev.mint))].slice(0, 30));
+    let es: EventSource | null = null;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let attempt = 0;
+    let closed = false;
+    const open = () => {
+      es = new EventSource(`${RELAY}/events`);
+      es.onopen = () => {
+        attempt = 0;
+        setStatus('live');
+      };
+      es.addEventListener('source', (m) => setSource((JSON.parse((m as MessageEvent).data) as { source: string }).source));
+      es.onmessage = (m) => {
+        const ev = JSON.parse(m.data) as LiveEvent;
+        setEvents((prev) => [ev, ...prev.filter((p) => !(p.kind === ev.kind && p.mint === ev.mint))].slice(0, 30));
+      };
+      es.onerror = () => {
+        setStatus('connecting');
+        // EventSource gives up for good after a non-200 (e.g. the relay waking up); reopen it ourselves.
+        if (es?.readyState === EventSource.CLOSED && !closed) {
+          retry = setTimeout(open, Math.min(60_000, 3000 * 2 ** attempt++));
+        }
+      };
     };
+    open();
     const t = setInterval(() => tick((x) => x + 1), 10_000);
     return () => {
-      es.close();
+      closed = true;
+      es?.close();
+      clearTimeout(retry);
       clearInterval(t);
     };
   }, []);
@@ -31,7 +57,7 @@ export function LiveFeed() {
         <span className="label-caps">live · mainnet</span>
         <span className={`inline-flex items-center gap-1.5 font-mono text-[0.68rem] ${status === 'live' ? 'text-accent-text' : 'text-ink-3'}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${status === 'live' ? 'animate-pulse bg-phosphor' : 'bg-ink-3'}`} />
-          {status}
+          {source === 'mock' ? 'mock' : status}
         </span>
       </div>
       {events.length === 0 && (
@@ -62,7 +88,7 @@ export function LiveFeed() {
           </li>
         ))}
       </ul>
-      <p className="mt-3 border-t border-line pt-2 font-mono text-[0.62rem] text-ink-3">streamed by Solami Blur</p>
+      <p className={`mt-3 border-t border-line pt-2 font-mono text-[0.62rem] ${source === 'mock' ? 'text-warn-text' : 'text-ink-3'}`}>{source ? SOURCE_LABEL[source] ?? source : 'live mainnet feed'}</p>
     </div>
   );
 }

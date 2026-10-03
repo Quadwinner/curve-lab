@@ -1,11 +1,15 @@
 import type { PresetParams } from '../lib/dbc/config';
-import type { Feature, Meta, PresetDetail, PresetSummary, QuoteInfo, RecentLaunch } from '../lib/data/types';
+import type { Feature, MarketTotals, Meta, PresetDetail, PresetSummary, QuoteInfo, RecentLaunch } from '../lib/data/types';
 import { feeScheduleBps } from '../lib/curve/fees';
 import { curveSeries, marketCap, sparkline } from '../lib/curve/math';
 import { featureVector } from '../lib/curve/similarity';
 import type { PresetStats } from '../lib/metrics/aggregate';
 
 const finiteOrNull = (x: number) => (Number.isFinite(x) && x > 0 ? x : null);
+
+// Completion is bimodal on mainnet (most groups < 20% or > 80%); ≥ 90% means the launchpad buys out its own curves.
+export const PREFUNDED_MIN_LAUNCHES = 20;
+export const PREFUNDED_COMPLETION = 0.9;
 
 export function buildSummary(id: string, s: PresetStats, p: PresetParams, quote: QuoteInfo): PresetSummary {
   const scale = 10 ** quote.decimals;
@@ -34,6 +38,7 @@ export function buildSummary(id: string, s: PresetStats, p: PresetParams, quote:
     migrationMcap: finiteOrNull(marketCap(BigInt(p.migrationSqrtPrice), p, quote.decimals)),
     spark: sparkline(series, 16),
     lastLaunch: s.lastLaunch,
+    prefunded: s.launches >= PREFUNDED_MIN_LAUNCHES && (s.organic + s.instant) / s.launches >= PREFUNDED_COMPLETION,
   };
 }
 
@@ -69,6 +74,7 @@ export function buildFeature(s: PresetSummary): Feature {
     startMcap: s.startMcap,
     migrationMcap: s.migrationMcap,
     startFeeBps: s.startFeeBps,
+    prefunded: s.prefunded,
   };
 }
 
@@ -80,4 +86,18 @@ export function sanityCheck(prev: Meta | null, next: Meta): string | null {
 export function publishCheck(published: Meta | null, next: Meta): string | null {
   if (next.partial) return 'partial run (--pool-partitions) cannot be published';
   return sanityCheck(published, next);
+}
+
+export function marketTotals(summaries: Pick<PresetSummary, 'launches' | 'instant' | 'organic' | 'prefunded'>[]): MarketTotals {
+  const t: MarketTotals = { prefundedGroups: 0, prefundedLaunches: 0, marketOrganic: 0, marketEligible: 0 };
+  for (const s of summaries) {
+    if (s.prefunded) {
+      t.prefundedGroups++;
+      t.prefundedLaunches += s.launches;
+    } else {
+      t.marketOrganic += s.organic;
+      t.marketEligible += s.launches - s.instant;
+    }
+  }
+  return t;
 }

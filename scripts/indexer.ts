@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { buildDetail, buildFeature, buildSummary, sanityCheck } from '../src/indexer/build';
+import { buildDetail, buildFeature, buildSummary, marketTotals, sanityCheck } from '../src/indexer/build';
 import { configEntryFromBody, loadConfigCache, saveConfigCache, type ConfigEntry } from '../src/indexer/cache';
 import { resolveQuotes } from '../src/indexer/quotes';
 import { decodeConfigParams } from '../src/lib/dbc/config';
@@ -157,6 +157,7 @@ const meta: Meta = {
   refTime: clock.refTime,
   totals: { pools: table.size, configs: configKeys.length, presets: presets.length, listed: summaries.length, detailed, organic, instant, open },
   skipped,
+  market: marketTotals(summaries),
   ...(partial ? { partial: true } : {}),
 };
 

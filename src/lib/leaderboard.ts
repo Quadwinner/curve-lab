@@ -6,11 +6,12 @@ export interface LeaderboardQuery {
   quote: 'all' | 'SOL' | 'USDC' | 'stocks' | 'other';
   min: number;
   page: number;
+  prefunded?: 'show' | 'hide';
 }
 
 const KEY: Record<SortKey, (p: PresetSummary) => number | null> = {
   launches: (p) => p.launches,
-  organic: (p) => p.organicRate,
+  organic: (p) => (p.prefunded ? null : p.organicRate),
   speed: (p) => (p.medianGradSeconds === null ? null : -p.medianGradSeconds),
   raised: (p) => p.raised,
   fees: (p) => p.fees,
@@ -30,6 +31,7 @@ export function parseQuery(sp: Record<string, string | string[] | undefined>): L
     sort: validSort,
     quote: validQuote,
     min: Math.max(5, Number(one('min')) || 20),
+    prefunded: one('pf') === 'hide' ? 'hide' : 'show',
     page: Math.max(1, Number(one('page')) || 1),
   };
 }
@@ -42,7 +44,7 @@ export function queryPresets(all: PresetSummary[], q: LeaderboardQuery, pageSize
     if (q.quote === 'other') return !['SOL', 'USDC'].includes(p.quote.symbol);
     return p.quote.symbol === q.quote;
   };
-  const filtered = all.filter((p) => p.launches >= q.min && matchesQuote(p));
+  const filtered = all.filter((p) => p.launches >= q.min && matchesQuote(p) && !(q.prefunded === 'hide' && p.prefunded));
   filtered.sort((a, b) => {
     const x = key(a);
     const y = key(b);

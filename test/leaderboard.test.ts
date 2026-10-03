@@ -6,7 +6,7 @@ const p = (id: string, o: Partial<PresetSummary>): PresetSummary => ({
   id, quoteMint: 'So11111111111111111111111111111111111111112', quote: { symbol: 'SOL', decimals: 9 },
   launches: 100, organic: 10, instant: 0, open: 90, organicRate: 0.1, instantShare: 0, medianGradSeconds: 600,
   raised: 1, fees: 1, threshold: 85, startFeeBps: 100, endFeeBps: 100, feeMode: 0, dynamicFee: false,
-  creatorFeePct: 0, startMcap: 30, migrationMcap: 400, spark: [], lastLaunch: 1, ...o,
+  creatorFeePct: 0, startMcap: 30, migrationMcap: 400, spark: [], lastLaunch: 1, prefunded: false, ...o,
 });
 const all = [
   p('a', { launches: 30, organicRate: 0.5 }),
@@ -52,5 +52,17 @@ describe('parseQuery', () => {
     expect(parseQuery({ sort: 'fees', quote: 'all' })).toMatchObject({ quote: 'SOL' });
     expect(parseQuery({ sort: 'fees', quote: 'USDC' })).toMatchObject({ quote: 'USDC' });
     expect(parseQuery({ sort: 'launches' })).toMatchObject({ quote: 'all' });
+  });
+});
+
+describe('pre-funded groups on the leaderboard', () => {
+  const rows = [p('pf', { launches: 900, organicRate: 1, prefunded: true }), p('real', { launches: 100, organicRate: 0.05, prefunded: false })];
+  it('ranks pre-funded groups after real ones when sorting by organic rate', () => {
+    expect(queryPresets(rows, { sort: 'organic', quote: 'all', min: 5, page: 1, prefunded: 'show' }).rows.map((r) => r.id)).toEqual(['real', 'pf']);
+  });
+  it('can hide pre-funded groups', () => {
+    expect(queryPresets(rows, { sort: 'launches', quote: 'all', min: 5, page: 1, prefunded: 'hide' }).rows.map((r) => r.id)).toEqual(['real']);
+    expect(parseQuery({ pf: 'hide' }).prefunded).toBe('hide');
+    expect(parseQuery({}).prefunded).toBe('show');
   });
 });

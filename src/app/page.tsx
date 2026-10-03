@@ -26,10 +26,11 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
   const { rows, total, pages } = queryPresets(presets, q, PAGE_SIZE);
   const page = Math.min(q.page, pages);
   const t = meta.totals;
+  const m = meta.market;
   const stale = Date.now() / 1000 - meta.generatedAt > 12 * 3600;
   const link = (o: Partial<LeaderboardQuery>) => {
     const next = { ...q, ...o };
-    return `/?${new URLSearchParams({ sort: next.sort, quote: next.quote, min: String(next.min), page: String(next.page) })}`;
+    return `/?${new URLSearchParams({ sort: next.sort, quote: next.quote, min: String(next.min), page: String(next.page), pf: next.prefunded ?? 'show' })}`;
   };
   return (
     <div className="space-y-8">
@@ -39,7 +40,7 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
           Which Meteora launch settings <em className="text-accent-text">actually</em> work?
         </h1>
         <p className="mt-4 max-w-2xl text-ink-2">
-          Every Dynamic Bonding Curve launch on Solana mainnet, grouped by identical settings. Launches that completed their curve within 60 seconds are counted as <span className="text-warn-text">instant</span> (pre-bought), so the graduation rate reflects real demand.
+          Every Dynamic Bonding Curve launch on Solana mainnet, grouped by identical settings. Curves completed within 60 seconds count as <span className="text-warn-text">instant</span>, and setting groups where almost every launch graduates are flagged <span className="text-warn-text">pre-funded</span>: the launchpad buys out its own curves. What remains is real market demand.
         </p>
         <p className={`mt-3 font-mono text-xs ${stale ? 'text-warn-text' : 'text-ink-3'}`}>
           ● scanned {timeAgo(meta.generatedAt)} · slot {meta.refSlot.toLocaleString('en')}{stale ? ' · refresh delayed' : ''}
@@ -47,10 +48,10 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
       </section>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Launches" value={fmtCompact(t.pools)} hint="DBC pools on mainnet" delay={60} />
-        <StatCard label="Setting groups" value={fmtCompact(t.presets)} hint={`from ${fmtCompact(t.configs)} config accounts`} delay={120} />
-        <StatCard label="Instant graduations" value={fmtPct(t.instant / Math.max(1, t.pools))} hint={`${fmtCompact(t.instant)} curves done < 60 s`} tone="warn" delay={180} />
-        <StatCard label="Organic graduation" value={fmtPct(t.organic / Math.max(1, t.pools - t.instant))} hint="of non-instant launches" tone="accent" delay={240} />
+        <StatCard label="Launches" value={fmtCompact(t.pools)} hint={`${fmtCompact(t.presets)} setting groups · ${fmtCompact(t.configs)} configs`} delay={60} />
+        <StatCard label="Instant graduations" value={fmtPct(t.instant / Math.max(1, t.pools))} hint={`${fmtCompact(t.instant)} curves done < 60 s`} tone="warn" delay={120} />
+        <StatCard label="Pre-funded launchpads" value={m ? fmtPct(m.prefundedLaunches / Math.max(1, t.pools)) : '—'} hint={m ? `of launches · ${fmtCompact(m.prefundedGroups)} groups graduate ≥ 90%` : undefined} tone="warn" delay={180} />
+        <StatCard label="Open-market graduation" value={m ? fmtPct(m.marketOrganic / Math.max(1, m.marketEligible)) : '—'} hint="excluding instant and pre-funded" tone="accent" delay={240} />
       </section>
 
       <section className="flex flex-wrap items-center gap-2">
@@ -62,6 +63,9 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
         {[5, 20, 100, 1000].map((min) => (
           <Chip key={min} href={link({ min, page: 1 })} active={q.min === min}>≥{min}</Chip>
         ))}
+        <span className="label-caps ml-4 mr-1">pre-funded</span>
+        <Chip href={link({ prefunded: 'show', page: 1 })} active={q.prefunded !== 'hide'}>show</Chip>
+        <Chip href={link({ prefunded: 'hide', page: 1 })} active={q.prefunded === 'hide'}>hide</Chip>
         <span className="readout ml-auto text-xs text-ink-3">{total.toLocaleString('en')} groups</span>
       </section>
 
@@ -81,6 +85,7 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
           <li>A <b>setting group</b> is every config account with byte-identical settings (curve, fees, thresholds, LP split), ignoring who claims the fees.</li>
           <li><b>Instant</b>: the curve completed within 60 s of the launch, which almost always means it was bought out in the creation transaction.</li>
           <li><b>Organic graduation</b> = graduated launches ÷ non-instant launches, shown once a group has at least 5 non-instant launches.</li>
+          <li><b>Pre-funded</b>: a group with ≥ 20 launches where ≥ 90% complete their curve. On mainnet completion is bimodal (most groups graduate under 20% or over 80%), so these are launchpads buying out their own curves, often a few blocks after creation.</li>
           <li>Slot-activated launches are timed with real block times sampled every 10,000 slots (error under 20 s).</li>
           <li>Raised and fees are quote-token amounts summed over every launch in the group.</li>
         </ul>

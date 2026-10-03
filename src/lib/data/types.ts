@@ -27,6 +27,7 @@ export interface PresetSummary {
   migrationMcap: number | null;
   spark: number[];
   lastLaunch: number | null;
+  prefunded: boolean;
 }
 
 export interface RecentLaunch { pool: string; mint: string; launchTime: number | null; cls: 'open' | 'organic' | 'instant'; progress: number }
@@ -43,13 +44,16 @@ export interface PresetDetail extends PresetSummary {
   recent: RecentLaunch[];
 }
 
-export interface Feature { id: string; quoteMint: string; v: number[]; organicRate: number | null; launches: number; threshold: number; startMcap: number | null; migrationMcap: number | null; startFeeBps: number }
+export interface Feature { id: string; quoteMint: string; v: number[]; organicRate: number | null; launches: number; threshold: number; startMcap: number | null; migrationMcap: number | null; startFeeBps: number; prefunded: boolean }
 
 export interface Meta {
   generatedAt: number;
   refSlot: number;
   refTime: number;
   totals: { pools: number; configs: number; presets: number; listed: number; detailed: number; organic: number; instant: number; open: number };
+  market?: MarketTotals;
   skipped: number;
   partial?: boolean;
 }
+
+export interface MarketTotals { prefundedGroups: number; prefundedLaunches: number; marketOrganic: number; marketEligible: number }

@@ -41,7 +41,12 @@ export default async function PresetPage({ params }: PageProps<'/preset/[id]'>) 
         <p className="mt-2 text-ink-2">
           {FEE_MODE[p.feeMode] ?? 'Custom fee'} · used by {fmtCompact(p.configCount)} config account{p.configCount === 1 ? '' : 's'} · creator gets {p.creatorFeePct}% of trading fees
         </p>
-        {p.instantShare >= 0.5 && (
+        {p.prefunded && (
+          <p className="mt-3 inline-flex items-center gap-2 rounded border border-amber/40 bg-amber/10 px-3 py-1.5 text-sm text-warn-text">
+            <BoltIcon /> Pre-funded: {fmtPct((p.organic + p.instant) / p.launches)} of launches on these settings complete their curve, so the launchpad is buying out its own curves. The graduation rate here is not market demand.
+          </p>
+        )}
+        {!p.prefunded && p.instantShare >= 0.5 && (
           <p className="mt-3 inline-flex items-center gap-2 rounded border border-amber/40 bg-amber/10 px-3 py-1.5 text-sm text-warn-text">
             <BoltIcon /> {fmtPct(p.instantShare)} of these launches completed their curve within 60 s (pre-bought), so raw graduation counts overstate demand.
           </p>

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { decodeConfigParams } from '@/lib/dbc/config';
 import { CONFIG_SLICE } from '@/lib/dbc/layout';
-import { buildFeature, buildSummary, publishCheck, sanityCheck } from '@/indexer/build';
+import { buildFeature, buildSummary, marketTotals, publishCheck, sanityCheck } from '@/indexer/build';
 import { configEntryFromBody, loadConfigCache, saveConfigCache } from '@/indexer/cache';
 import { KNOWN_QUOTES, resolveQuotes } from '@/indexer/quotes';
 import type { PresetStats } from '@/lib/metrics/aggregate';
@@ -100,5 +100,25 @@ describe('publishCheck', () => {
   it('applies the 5% drop rule against the published data', () => {
     expect(publishCheck(meta(1000), meta(900))).toMatch(/900 pools vs 1000/);
     expect(publishCheck(meta(1000), meta(1001))).toBeNull();
+  });
+});
+
+describe('pre-funded launchpads', () => {
+  const params = decodeConfigParams(body);
+  const stats = (o: Partial<PresetStats>): PresetStats => ({
+    index: 0, launches: 100, instant: 20, organic: 75, open: 5, organicRate: 0.94, buckets: [5, 0, 0, 0, 0, 0],
+    raisedRaw: 0, feesRaw: 0, medianGradSeconds: 120, firstLaunch: 1, lastLaunch: 2, weekly: [],
+    topFeeClaimers: [], topConfig: { index: 0, launches: 1 }, configCount: 1, recent: [], ...o,
+  });
+  it('flags groups where ≥90% of launches complete', () => {
+    expect(buildSummary('a'.repeat(16), stats({}), params, { symbol: 'SOL', decimals: 9 }).prefunded).toBe(true);
+    expect(buildSummary('a'.repeat(16), stats({ organic: 10, open: 70 }), params, { symbol: 'SOL', decimals: 9 }).prefunded).toBe(false);
+  });
+  it('needs at least 20 launches to call a group pre-funded', () => {
+    expect(buildSummary('a'.repeat(16), stats({ launches: 10, instant: 5, organic: 5, open: 0 }), params, { symbol: 'SOL', decimals: 9 }).prefunded).toBe(false);
+  });
+  it('computes open-market totals without pre-funded groups', () => {
+    const s = (launches: number, instant: number, organic: number, prefunded: boolean) => ({ launches, instant, organic, prefunded }) as never;
+    expect(marketTotals([s(100, 90, 10, true), s(1000, 100, 9, false), s(50, 0, 1, false)])).toEqual({ prefundedGroups: 1, prefundedLaunches: 100, marketOrganic: 10, marketEligible: 950 });
   });
 });

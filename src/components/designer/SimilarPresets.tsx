@@ -4,7 +4,7 @@ import { fmtCompact, fmtPct, fmtQuote } from '@/lib/format';
 import { nearest } from '@/lib/curve/similarity';
 
 export function SimilarPresets({ features, v, quoteMint, symbol }: { features: Feature[]; v: number[]; quoteMint: string; symbol: string }) {
-  const near = nearest(features, v, quoteMint, 5);
+  const near = nearest(features.filter((f) => !f.prefunded), v, quoteMint, 5);
   if (!near.length) return <p className="text-sm text-ink-3">No comparable mainnet settings for {symbol} yet.</p>;
   const rated = near.filter((n) => n.organicRate !== null);
   const total = rated.reduce((a, n) => a + n.launches, 0);
@@ -12,7 +12,7 @@ export function SimilarPresets({ features, v, quoteMint, symbol }: { features: F
   return (
     <div>
       <p className="text-ink-2">
-        Settings like yours graduated <span className="readout text-2xl text-accent-text">{fmtPct(rate)}</span> of non-instant launches on mainnet
+        Excluding pre-funded launchpads, settings like yours graduated <span className="readout text-2xl text-accent-text">{fmtPct(rate)}</span> of non-instant launches on mainnet
         <span className="text-ink-3"> · {fmtCompact(near.reduce((a, n) => a + n.launches, 0))} launches across the {near.length} closest groups</span>
       </p>
       <table className="mt-3 w-full whitespace-nowrap text-sm">

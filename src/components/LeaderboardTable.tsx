@@ -8,7 +8,7 @@ import { ArrowIcon, BoltIcon } from './icons';
 const FEE_MODE = ['linear decay', 'exp. decay', 'rate limiter'];
 
 function SortHeader({ q, k, children, className = '' }: { q: LeaderboardQuery; k: SortKey; children: React.ReactNode; className?: string }) {
-  const params = new URLSearchParams({ sort: k, quote: q.quote, min: String(q.min) });
+  const params = new URLSearchParams({ sort: k, quote: q.quote, min: String(q.min), pf: q.prefunded ?? 'show' });
   const active = q.sort === k;
   return (
     <th className={`px-3 py-2 font-normal ${className}`} aria-sort={active ? 'descending' : 'none'}>
@@ -20,7 +20,13 @@ function SortHeader({ q, k, children, className = '' }: { q: LeaderboardQuery; k
   );
 }
 
-function OrganicMeter({ rate }: { rate: number | null }) {
+function OrganicMeter({ rate, prefunded }: { rate: number | null; prefunded: boolean }) {
+  if (prefunded)
+    return (
+      <span className="inline-flex items-center gap-1 rounded border border-amber/40 bg-amber/10 px-1.5 py-0.5 font-mono text-[0.7rem] text-warn-text" title="≥90% of launches complete their curve: the launchpad buys out its own curves, so this is not market demand">
+        <BoltIcon className="h-3 w-3" /> pre-funded
+      </span>
+    );
   if (rate === null) return <span className="text-ink-3" title="Fewer than 5 non-instant launches">—</span>;
   return (
     <div className="flex items-center gap-2">
@@ -72,7 +78,7 @@ export function LeaderboardTable({ rows, q, offset }: { rows: PresetSummary[]; q
                 </Link>
               </td>
               <td className="readout px-3 py-2.5 text-right">{fmtCompact(p.launches)}</td>
-              <td className="px-3 py-2.5"><OrganicMeter rate={p.organicRate} /></td>
+              <td className="px-3 py-2.5"><OrganicMeter rate={p.organicRate} prefunded={p.prefunded} /></td>
               <td className="px-3 py-2.5"><InstantCell share={p.instantShare} /></td>
               <td className="readout px-3 py-2.5 text-ink-2">{fmtDuration(p.medianGradSeconds)}</td>
               <td className="readout px-3 py-2.5 text-right text-ink-2">{fmtQuote(p.raised, p.quote.symbol)}</td>

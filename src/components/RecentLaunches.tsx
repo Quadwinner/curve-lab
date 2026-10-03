@@ -2,10 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { RecentLaunch } from '@/lib/data/types';
 import { shortAddr, timeAgo } from '@/lib/format';
-import { decodeProgress, PROGRESS_SLICE } from '@/lib/live/progress';
 import { BoltIcon } from './icons';
-
-const RPC = process.env.NEXT_PUBLIC_RPC_URL ?? 'https://api.mainnet-beta.solana.com';
 
 export function RecentLaunches({ launches, threshold }: { launches: RecentLaunch[]; threshold: string }) {
   const [live, setLive] = useState<Record<string, number>>({});
@@ -15,20 +12,15 @@ export function RecentLaunches({ launches, threshold }: { launches: RecentLaunch
     if (!open.length) return;
     const poll = async () => {
       try {
-        const res = await fetch(RPC, {
+        const res = await fetch('/api/progress', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getMultipleAccounts', params: [open, { encoding: 'base64', dataSlice: PROGRESS_SLICE }] }),
+          body: JSON.stringify({ pools: open, threshold }),
         });
-        const json = (await res.json()) as { result: { value: ({ data: [string] } | null)[] } };
-        const next: Record<string, number> = {};
-        json.result.value.forEach((v, i) => {
-          if (!v) return;
-          const bytes = Uint8Array.from(atob(v.data[0]), (c) => c.charCodeAt(0));
-          next[open[i]] = decodeProgress(bytes, BigInt(threshold)).progress;
-        });
-        setLive(next);
-        setPolled(Math.floor(Date.now() / 1000));
+        if (!res.ok) return;
+        const json = (await res.json()) as { progress: Record<string, number>; at: number };
+        setLive(json.progress);
+        setPolled(json.at);
       } catch {
         // public RPC is best-effort; keep the last snapshot
       }

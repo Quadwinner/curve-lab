@@ -66,9 +66,8 @@ export function LineChart({
     }
     const sx = (x: number) => L + ((x - x0) / (x1 - x0 || 1)) * (W - L - R);
     const sy = (y: number) => H - B - ((ty(y) - y0) / (y1 - y0)) * (H - B - T);
-    const yTicks = logY
-      ? niceTicks(Math.ceil(y0), Math.floor(y1), 4).filter(Number.isInteger).map((k) => 10 ** k)
-      : niceTicks(y0, y1, 4);
+    const decades = niceTicks(Math.ceil(y0), Math.floor(y1), 4).filter(Number.isInteger).map((k) => 10 ** k);
+    const yTicks = logY ? (decades.length >= 2 ? decades : [10 ** y0, 10 ** y1]) : niceTicks(y0, y1, 4);
     return { sx, sy, xTicks: niceTicks(x0, x1, 4), yTicks };
   }, [points, logY, H]);
 

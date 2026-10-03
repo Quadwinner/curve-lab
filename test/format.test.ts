@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtCompact, fmtDuration, fmtPct, fmtQuote, shortAddr, timeAgo } from '@/lib/format';
+import { fmtCompact, fmtDuration, fmtPct, fmtQuote, plural, shortAddr, timeAgo } from '@/lib/format';
 
 describe('format', () => {
   it('compacts numbers', () => {
@@ -25,4 +25,12 @@ describe('format', () => {
   });
   it('shortens addresses', () => expect(shortAddr('dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN')).toBe('dbci…aqN'));
   it('describes time ago', () => expect(timeAgo(1000, 1000 + 7200)).toBe('2h ago'));
+});
+
+describe('plural', () => {
+  it('picks the right noun form', () => {
+    expect(plural(1, 'launch', 'launches')).toBe('1 launch');
+    expect(plural(2, 'launch', 'launches')).toBe('2 launches');
+    expect(plural(1500, 'launch', 'launches')).toBe('1.5K launches');
+  });
 });

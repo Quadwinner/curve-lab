@@ -20,3 +20,5 @@ export function fmtDuration(s: number | null): string {
 }
 
 export const timeAgo = (t: number, now = Date.now() / 1000) => `${fmtDuration(Math.max(0, now - t))} ago`;
+
+export const plural = (n: number, one: string, many: string) => `${fmtCompact(n)} ${n === 1 ? one : many}`;

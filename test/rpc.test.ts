@@ -112,6 +112,17 @@ describe('streamPartitioned', () => {
     expect(keys.sort()).toEqual(['A1111', 'B2222', 'C3333']);
     expect(r.count).toBe(3);
   });
+  it('can skip partitions that keep failing and report them', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: { body: string }) => (partitionByte(init) === '2' ? Promise.reject(new Error('fetch failed')) : streamResponse(bodyFor(['A1111'])))));
+    const keys: string[] = [];
+    const r = await streamPartitioned({ rpcUrl: 'http://rpc', programId: 'p', dataSize: 3, partitionOffset: 40, partitions: [0, 1], retryBaseMs: 1, attempts: 2, allowFailures: true, onAccount: (k) => keys.push(k) });
+    expect(keys).toEqual(['A1111']);
+    expect(r.failed).toEqual([1]);
+  });
+  it('throws on a failing partition unless failures are allowed', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('fetch failed'))));
+    await expect(streamPartitioned({ rpcUrl: 'http://rpc', programId: 'p', dataSize: 3, partitionOffset: 40, partitions: [0], retryBaseMs: 1, attempts: 2, onAccount: () => {} })).rejects.toThrow('fetch failed');
+  });
   it('retries a failed partition without delivering its accounts twice', async () => {
     let calls = 0;
     vi.stubGlobal('fetch', vi.fn(async () => (++calls === 1 ? streamResponse(bodyFor(['A1111']).slice(0, -30)) : streamResponse(bodyFor(['A1111'])))));

@@ -75,28 +75,45 @@ type StreamOptions = Parameters<typeof streamProgramAccounts>[0];
 
 // Public RPC stalls on single responses of several hundred MB; 256 memcmp partitions on one byte keep each response a few MB.
 export async function streamPartitioned(
-  o: StreamOptions & { partitionOffset: number; partitions?: number[]; concurrency?: number; retryBaseMs?: number; onPartition?: (done: number, total: number) => void },
-): Promise<{ count: number; bytes: number }> {
+  o: StreamOptions & {
+    partitionOffset: number;
+    partitions?: number[];
+    concurrency?: number;
+    retryBaseMs?: number;
+    attempts?: number;
+    allowFailures?: boolean;
+    onPartition?: (done: number, total: number) => void;
+  },
+): Promise<{ count: number; bytes: number; failed: number[] }> {
   const parts = o.partitions ?? Array.from({ length: 256 }, (_, i) => i);
   let next = 0;
   let count = 0;
   let bytes = 0;
   let done = 0;
+  const failed: number[] = [];
   const worker = async () => {
     while (next < parts.length) {
       const p = parts[next++];
       const buffered: [string, Uint8Array][] = [];
-      const r = await withRetry(
-        () => {
-          buffered.length = 0;
-          return streamProgramAccounts({
-            ...o,
-            memcmp: [...(o.memcmp ?? []), { offset: o.partitionOffset, bytes: bs58.encode([p]) }],
-            onAccount: (k, d) => buffered.push([k, d]),
-          });
-        },
-        { label: `partition ${p}`, attempts: 6, baseMs: o.retryBaseMs ?? 3000 },
-      );
+      let r: { count: number; bytes: number };
+      try {
+        r = await withRetry(
+          () => {
+            buffered.length = 0;
+            return streamProgramAccounts({
+              ...o,
+              memcmp: [...(o.memcmp ?? []), { offset: o.partitionOffset, bytes: bs58.encode([p]) }],
+              onAccount: (k, d) => buffered.push([k, d]),
+            });
+          },
+          { label: `partition ${p}`, attempts: o.attempts ?? 6, baseMs: o.retryBaseMs ?? 3000 },
+        );
+      } catch (e) {
+        if (!o.allowFailures) throw e;
+        failed.push(p);
+        done++;
+        continue;
+      }
       for (const [k, d] of buffered) o.onAccount(k, d);
       count += r.count;
       bytes += r.bytes;
@@ -105,5 +122,5 @@ export async function streamPartitioned(
     }
   };
   await Promise.all(Array.from({ length: Math.min(o.concurrency ?? 4, parts.length) }, worker));
-  return { count, bytes };
+  return { count, bytes, failed: failed.sort((a, b) => a - b) };
 }

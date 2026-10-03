@@ -21,7 +21,7 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: { attempts?: numb
       last = e;
       if (i < attempts - 1) {
         if (opts.label) console.warn(`[retry] ${opts.label} attempt ${i + 1} failed: ${(e as Error).message}`);
-        await new Promise((r) => setTimeout(r, (opts.baseMs ?? 1500) * 2 ** i));
+        await new Promise((r) => setTimeout(r, Math.min(60_000, (opts.baseMs ?? 1500) * 2 ** i)));
       }
     }
   }

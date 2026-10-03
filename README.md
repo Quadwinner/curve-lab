@@ -75,11 +75,13 @@ Publish a full local index to the `data` branch with `npm run publish-data`. It 
 | Variable | Used by | Purpose |
 |---|---|---|
 | `RPC_URL` | indexer, relay, `/api/progress` | Mainnet RPC (defaults to `https://api.mainnet-beta.solana.com`). Point it at your Solami RPC endpoint. |
+| `ARCHIVE_RPC_URL` | indexer | Archival RPC for historical block times (default public mainnet; Solami RPC has no history). |
 | `DATA_BASE_URL` | web | Where the JSON lives, e.g. `https://raw.githubusercontent.com/Quadwinner/curve-lab/data` |
 | `DATA_DIR` | web (dev) | Read JSON from a local folder instead |
 | `NEXT_PUBLIC_RELAY_URL` | web | Relay base URL for the live feed |
 | `NEXT_PUBLIC_DEVNET_RPC_URL` | web | Devnet RPC for config creation (default public devnet) |
 | `SOLAMI_API_KEY` | relay | Solami key for the Blur stream |
+| `RPC_WS_URL` | relay | WebSocket for the logsSubscribe fallback (default public mainnet) |
 | `SOLAMI_WS_URL` | relay | Override the Blur endpoint (default `wss://ws.solami.dev/data/subscribe`) |
 | `PREV_META` | indexer | Previous `meta.json`; publishing aborts if the launch count drops more than 5 % |
 
@@ -87,7 +89,7 @@ Publish a full local index to the `data` branch with `npm run publish-data`. It 
 
 1. Create a key at [solami.dev](https://solami.dev) (Blur access).
 2. Run the relay with it: `SOLAMI_API_KEY=... npm run relay`. `/health` reports `"upstream":"live"` once the stream is connected.
-3. Optionally set `RPC_URL` to your Solami RPC endpoint so the indexer and relay read mainnet through Solami as well.
+3. Set `RPC_URL=https://rpc.solami.dev/sol?api_key=<key>` so the indexer reads every DBC pool, config and DAMM v2 pool through Solami (block times still come from `ARCHIVE_RPC_URL`).
 
 ## Deploy
 

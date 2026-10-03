@@ -12,7 +12,7 @@ import { rpcCall } from '../src/lib/rpc/http';
 const PORT = Number(process.env.PORT ?? 8787);
 const KEY = process.env.SOLAMI_API_KEY;
 const RPC = process.env.RPC_URL ?? 'https://api.mainnet-beta.solana.com';
-const RPC_WS = process.env.RPC_WS_URL ?? RPC.replace(/^http/, 'ws');
+const RPC_WS = process.env.RPC_WS_URL ?? 'wss://api.mainnet-beta.solana.com';
 const BLUR_WS = process.env.SOLAMI_WS_URL ?? 'wss://ws.solami.dev/data/subscribe';
 const SOURCE: 'solami' | 'rpc' | 'mock' = KEY ? 'solami' : process.env.RELAY_MOCK === '1' ? 'mock' : 'rpc';
 const IDLE_MS = 5 * 60_000;

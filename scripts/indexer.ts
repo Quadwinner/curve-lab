@@ -30,13 +30,15 @@ const { values } = parseArgs({
   },
 });
 const rpc = values.rpc ?? process.env.RPC_URL ?? 'https://api.mainnet-beta.solana.com';
+// Block times need an archival node; Solami's RPC returns null for historical slots, so they come from a separate endpoint.
+const archiveRpc = process.env.ARCHIVE_RPC_URL ?? 'https://api.mainnet-beta.solana.com';
 const minSummary = Number(values['min-summary']);
 const minDetail = Number(values['min-detail']);
 const poolPartitions = values['pool-partitions'] ? Array.from({ length: Number(values['pool-partitions']) }, (_, i) => i) : undefined;
 const partial = poolPartitions !== undefined;
 const log = (msg: string) => console.log(`[indexer ${new Date().toISOString()}] ${msg}`);
 
-const refClock = await withRetry(() => getRefClock(rpc), { label: 'clock' });
+const refClock = await withRetry(() => getRefClock(archiveRpc), { label: 'clock' });
 log(`clock slot=${refClock.refSlot} time=${refClock.refTime}`);
 
 const ANCHOR_FROM_SLOT = 320_000_000;
@@ -46,7 +48,7 @@ const anchors: Anchor[] = existsSync(anchorsPath) ? JSON.parse(readFileSync(anch
 const anchored = new Set(anchors.map((a) => a.target));
 const missingAnchors = anchorSlots(ANCHOR_FROM_SLOT, refClock.refSlot, ANCHOR_STEP).filter((t) => t < refClock.refSlot - 1000 && !anchored.has(t));
 if (missingAnchors.length) {
-  anchors.push(...(await fetchBlockTimes(rpc, missingAnchors)));
+  anchors.push(...(await fetchBlockTimes(archiveRpc, missingAnchors)));
   mkdirSync(dirname(anchorsPath), { recursive: true });
   writeFileSync(anchorsPath, JSON.stringify(anchors));
   log(`slot anchors: ${anchors.length} (${missingAnchors.length} requested)`);

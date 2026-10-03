@@ -34,3 +34,28 @@ describe('sendWithRetry', () => {
     await expect(sendWithRetry(f.conn as never, new Uint8Array([1]), 200, { intervalMs: 1 })).rejects.toThrow(/InstructionError/);
   });
 });
+
+describe('sendWithRetry under flaky RPC', () => {
+  it('keeps going through transient send errors', async () => {
+    let sends = 0;
+    const conn = {
+      sendRawTransaction: async () => {
+        sends++;
+        if (sends === 1) throw new Error('429 Too Many Requests');
+        return 'SIG';
+      },
+      getSignatureStatuses: async () => ({ value: [sends >= 3 ? { confirmationStatus: 'confirmed', err: null } : null] }),
+      getBlockHeight: async () => 100,
+    };
+    await expect(sendWithRetry(conn as never, new Uint8Array([1]), 200, { intervalMs: 1 })).resolves.toBe('SIG');
+  });
+  it('checks the status one last time before declaring the blockhash expired', async () => {
+    let heightCalls = 0;
+    const conn = {
+      sendRawTransaction: async () => 'SIG',
+      getSignatureStatuses: async () => ({ value: [heightCalls >= 1 ? { confirmationStatus: 'confirmed', err: null } : null] }),
+      getBlockHeight: async () => (++heightCalls, 300),
+    };
+    await expect(sendWithRetry(conn as never, new Uint8Array([1]), 200, { intervalMs: 1 })).resolves.toBe('SIG');
+  });
+});

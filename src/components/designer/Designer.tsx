@@ -4,7 +4,9 @@ import { LineChart } from '@/components/charts/LineChart';
 import type { Feature } from '@/lib/data/types';
 import { buildDesign, DEFAULT_FORM, designSnippet, QUOTES, type DesignerForm } from '@/lib/designer/build';
 import { fmtQuote } from '@/lib/format';
+import { CreateConfigButton } from './CreateConfigButton';
 import { SimilarPresets } from './SimilarPresets';
+import { WalletProviders } from './WalletProviders';
 
 type NumKey = { [K in keyof DesignerForm]: DesignerForm[K] extends number ? K : never }[keyof DesignerForm];
 
@@ -108,6 +110,17 @@ export function Designer({ features }: { features: Feature[] }) {
             <section className="rounded-md border border-line bg-panel/70 p-4">
               <h2 className="mb-2 font-display text-xl text-ink">Evidence from mainnet</h2>
               <SimilarPresets features={features} v={result.features} quoteMint={QUOTES[form.quote].mint} symbol={symbol} />
+            </section>
+            <section className="rounded-md border border-line bg-panel/70 p-4">
+              <h2 className="font-display text-xl text-ink">Create it on devnet</h2>
+              <p className="mb-3 mt-0.5 text-xs text-ink-3">Signs a real DBC createConfig with your wallet on Solana devnet (free faucet SOL). Your wallet becomes the fee claimer.</p>
+              {form.quote === 'SOL' ? (
+                <WalletProviders>
+                  <CreateConfigButton config={result.config} />
+                </WalletProviders>
+              ) : (
+                <p className="text-sm text-ink-3">Devnet creation is available for SOL-quoted settings.</p>
+              )}
             </section>
             <details className="rounded-md border border-line bg-panel/70 p-4">
               <summary className="cursor-pointer text-sm text-ink">Export as TypeScript</summary>

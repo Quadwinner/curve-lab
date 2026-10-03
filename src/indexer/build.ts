@@ -1,5 +1,5 @@
 import type { PresetParams } from '../lib/dbc/config';
-import type { Feature, PresetDetail, PresetSummary, QuoteInfo, RecentLaunch } from '../lib/data/types';
+import type { Feature, Meta, PresetDetail, PresetSummary, QuoteInfo, RecentLaunch } from '../lib/data/types';
 import { feeScheduleBps } from '../lib/curve/fees';
 import { curveSeries, marketCap, sparkline } from '../lib/curve/math';
 import { featureVector } from '../lib/curve/similarity';
@@ -70,4 +70,9 @@ export function buildFeature(s: PresetSummary): Feature {
     migrationMcap: s.migrationMcap,
     startFeeBps: s.startFeeBps,
   };
+}
+
+export function sanityCheck(prev: Meta | null, next: Meta): string | null {
+  if (!prev || next.totals.pools >= prev.totals.pools * 0.95) return null;
+  return `${next.totals.pools} pools vs ${prev.totals.pools} previously`;
 }

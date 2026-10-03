@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { decodeConfigParams } from '@/lib/dbc/config';
 import { CONFIG_SLICE } from '@/lib/dbc/layout';
-import { buildFeature, buildSummary } from '@/indexer/build';
+import { buildFeature, buildSummary, sanityCheck } from '@/indexer/build';
 import { configEntryFromBody, loadConfigCache, saveConfigCache } from '@/indexer/cache';
 import { KNOWN_QUOTES, resolveQuotes } from '@/indexer/quotes';
 import type { PresetStats } from '@/lib/metrics/aggregate';
@@ -53,5 +53,17 @@ describe('buildSummary', () => {
     expect(s.migrationMcap!).toBeGreaterThan(s.startMcap!);
     const f = buildFeature(s);
     expect(f.v.every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('sanityCheck', () => {
+  const meta = (pools: number) => ({ generatedAt: 0, refSlot: 0, refTime: 0, totals: { pools, configs: 0, presets: 0, listed: 0, detailed: 0, organic: 0, instant: 0, open: 0 }, skipped: 0 });
+  it('blocks publishing when pools drop more than 5%', () => {
+    expect(sanityCheck(meta(1000), meta(940))).toMatch(/940 pools vs 1000/);
+  });
+  it('allows normal growth, small dips, and first runs', () => {
+    expect(sanityCheck(meta(1000), meta(960))).toBeNull();
+    expect(sanityCheck(meta(1000), meta(1200))).toBeNull();
+    expect(sanityCheck(null, meta(5))).toBeNull();
   });
 });

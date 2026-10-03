@@ -1,0 +1,44 @@
+name: indexer
+on:
+  schedule:
+    - cron: '17 */8 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: indexer
+  cancel-in-progress: false
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: indexer-cache-${{ github.run_id }}
+          restore-keys: indexer-cache-
+      - name: Previous data
+        run: |
+          if git fetch --depth=1 origin data 2>/dev/null; then git show origin/data:meta.json > prev-meta.json; fi
+      - run: npm run indexer -- --out data-out
+        env:
+          RPC_URL: ${{ secrets.RPC_URL || 'https://api.mainnet-beta.solana.com' }}
+          PREV_META: prev-meta.json
+          NODE_OPTIONS: --max-old-space-size=6144
+      - uses: actions/cache/save@v4
+        if: always() && hashFiles('.cache/**') != ''
+        with:
+          path: .cache
+          key: indexer-cache-${{ github.run_id }}
+      - name: Publish data branch
+        run: |
+          cd data-out
+          git init -q -b data
+          git add -A
+          git -c user.name=curve-lab-bot -c user.email=bot@users.noreply.github.com commit -qm "data $(date -u +%FT%TZ)"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" data

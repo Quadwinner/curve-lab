@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { buildDetail, buildFeature, buildSummary } from '../src/indexer/build';
+import { buildDetail, buildFeature, buildSummary, sanityCheck } from '../src/indexer/build';
 import { configEntryFromBody, loadConfigCache, saveConfigCache, type ConfigEntry } from '../src/indexer/cache';
 import { resolveQuotes } from '../src/indexer/quotes';
 import { decodeConfigParams } from '../src/lib/dbc/config';
@@ -155,11 +155,15 @@ const meta: Meta = {
   skipped,
 };
 
-const prevUrl = process.env.DATA_BASE_URL ? `${process.env.DATA_BASE_URL}/meta.json` : null;
-if (prevUrl && !partial) {
-  const prev = (await fetch(prevUrl).then((r) => (r.ok ? r.json() : null)).catch(() => null)) as Meta | null;
-  if (prev && meta.totals.pools < prev.totals.pools * 0.95) {
-    console.error(`[indexer] sanity check failed: ${meta.totals.pools} pools vs ${prev.totals.pools} previously; not publishing`);
+async function loadPrevMeta(): Promise<Meta | null> {
+  if (process.env.PREV_META && existsSync(process.env.PREV_META)) return JSON.parse(readFileSync(process.env.PREV_META, 'utf8')) as Meta;
+  if (!process.env.DATA_BASE_URL) return null;
+  return (await fetch(`${process.env.DATA_BASE_URL}/meta.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null)) as Meta | null;
+}
+if (!partial) {
+  const problem = sanityCheck(await loadPrevMeta(), meta);
+  if (problem) {
+    console.error(`[indexer] sanity check failed: ${problem}; not publishing`);
     process.exit(1);
   }
 }

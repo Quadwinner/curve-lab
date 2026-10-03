@@ -26,6 +26,15 @@ describe('config cache', () => {
 });
 
 describe('resolveQuotes', () => {
+  it('names unknown quote mints from the Jupiter token list, falling back to RPC decimals', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (String(url).includes('jup.ag')) return Response.json([{ id: 'XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB', symbol: 'TSLAx', decimals: 8 }]);
+      return Response.json({ jsonrpc: '2.0', id: 1, result: { value: [{ data: [Buffer.from([5]).toString('base64'), 'base64'] }] } });
+    }));
+    const r = await resolveQuotes('http://rpc', ['XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB', 'Other11111111111111111111111111111111111111']);
+    expect(r.get('XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB')).toEqual({ symbol: 'TSLAx', decimals: 8 });
+    expect(r.get('Other11111111111111111111111111111111111111')).toEqual({ symbol: 'Othe…', decimals: 5 });
+  });
   it('recognises the real mainnet USDC mint without network', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('no network expected'); }));
     const r = await resolveQuotes('http://rpc', ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v']);

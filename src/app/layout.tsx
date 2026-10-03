@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans, Instrument_Serif } from 'next/font/google';
+import { LiveFeed } from '@/components/LiveFeed';
 import { SiteHeader } from '@/components/SiteHeader';
 import './globals.css';
 
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <SiteHeader />
         <div className="mx-auto flex max-w-[1440px] gap-6 px-5 py-8">
           <main className="min-w-0 flex-1">{children}</main>
-          <aside id="live-feed-slot" className="hidden w-72 shrink-0 2xl:block" />
+          <aside className="hidden w-64 shrink-0 xl:block">
+            <LiveFeed />
+          </aside>
         </div>
       </body>
     </html>

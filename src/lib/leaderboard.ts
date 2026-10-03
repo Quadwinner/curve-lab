@@ -23,9 +23,12 @@ export function parseQuery(sp: Record<string, string | string[] | undefined>): L
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : sp[k]);
   const sort = (one('sort') ?? 'launches') as SortKey;
   const quote = (one('quote') ?? 'all') as LeaderboardQuery['quote'];
+  const validSort: SortKey = sort in KEY ? sort : 'launches';
+  let validQuote: LeaderboardQuery['quote'] = ['all', 'SOL', 'USDC', 'stocks', 'other'].includes(quote) ? quote : 'all';
+  if ((validSort === 'raised' || validSort === 'fees') && validQuote !== 'SOL' && validQuote !== 'USDC') validQuote = 'SOL';
   return {
-    sort: sort in KEY ? sort : 'launches',
-    quote: ['all', 'SOL', 'USDC', 'stocks', 'other'].includes(quote) ? quote : 'all',
+    sort: validSort,
+    quote: validQuote,
     min: Math.max(5, Number(one('min')) || 20),
     page: Math.max(1, Number(one('page')) || 1),
   };

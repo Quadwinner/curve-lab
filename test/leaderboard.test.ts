@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { presetLabel, queryPresets } from '@/lib/leaderboard';
+import { parseQuery, presetLabel, queryPresets } from '@/lib/leaderboard';
 import type { PresetSummary } from '@/lib/data/types';
 
 const p = (id: string, o: Partial<PresetSummary>): PresetSummary => ({
@@ -43,5 +43,14 @@ describe('presetLabel', () => {
     expect(presetLabel(p('x', { threshold: 85, startFeeBps: 100, endFeeBps: 100 }))).toBe('85 SOL target · 1% fee');
     expect(presetLabel(p('x', { threshold: 85.004, startFeeBps: 25, endFeeBps: 25 }))).toBe('85 SOL target · 0.25% fee');
     expect(presetLabel(p('x', { threshold: 200, startFeeBps: 5000, endFeeBps: 201 }))).toBe('200 SOL target · 50%→2.01% fee');
+  });
+});
+
+describe('parseQuery', () => {
+  it('does not compare amounts across quote tokens', () => {
+    expect(parseQuery({ sort: 'raised' })).toMatchObject({ sort: 'raised', quote: 'SOL' });
+    expect(parseQuery({ sort: 'fees', quote: 'all' })).toMatchObject({ quote: 'SOL' });
+    expect(parseQuery({ sort: 'fees', quote: 'USDC' })).toMatchObject({ quote: 'USDC' });
+    expect(parseQuery({ sort: 'launches' })).toMatchObject({ quote: 'all' });
   });
 });

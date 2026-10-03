@@ -3,7 +3,7 @@ import { getAccountsData } from '../lib/rpc/accounts';
 
 export const KNOWN_QUOTES: Record<string, QuoteInfo> = {
   So11111111111111111111111111111111111111112: { symbol: 'SOL', decimals: 9 },
-  EPjFWdd5AufqSSqeM2qtpgu5ZtFwfrmrBp8eXn4UtLGU: { symbol: 'USDC', decimals: 6 },
+  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: { symbol: 'USDC', decimals: 6 },
   USD1ttGY1N17NEEHLmELoaybftRBUSErhqYiQzvEmuB: { symbol: 'USD1', decimals: 6 },
   Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB: { symbol: 'USDT', decimals: 6 },
 };

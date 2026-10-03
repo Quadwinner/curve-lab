@@ -26,6 +26,11 @@ describe('config cache', () => {
 });
 
 describe('resolveQuotes', () => {
+  it('recognises the real mainnet USDC mint without network', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('no network expected'); }));
+    const r = await resolveQuotes('http://rpc', ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v']);
+    expect(r.get('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')).toEqual({ symbol: 'USDC', decimals: 6 });
+  });
   it('uses known mints without network and falls back for unknown ones', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ jsonrpc: '2.0', id: 1, result: { value: [null] } })));
     const sol = 'So11111111111111111111111111111111111111112';

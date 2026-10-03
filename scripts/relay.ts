@@ -14,7 +14,8 @@ const KEY = process.env.SOLAMI_API_KEY;
 const RPC = process.env.RPC_URL ?? 'https://api.mainnet-beta.solana.com';
 const RPC_WS = process.env.RPC_WS_URL ?? 'wss://api.mainnet-beta.solana.com';
 const BLUR_WS = process.env.SOLAMI_WS_URL ?? 'wss://ws.solami.dev/data/subscribe';
-const SOURCE: 'solami' | 'rpc' | 'mock' = KEY ? 'solami' : process.env.RELAY_MOCK === '1' ? 'mock' : 'rpc';
+let SOURCE: 'solami' | 'rpc' | 'mock' = KEY ? 'solami' : process.env.RELAY_MOCK === '1' ? 'mock' : 'rpc';
+let rejectedOpens = 0;
 const IDLE_MS = 5 * 60_000;
 const BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
@@ -120,7 +121,10 @@ function connect(attempt = 0) {
   const url = SOURCE === 'solami' ? `${BLUR_WS}?chain=solana&api_key=${KEY}&type=token_create,graduation` : RPC_WS;
   const ws = new WebSocket(url);
   lastMessageAt = Date.now();
+  let opened = false;
   ws.onopen = () => {
+    opened = true;
+    rejectedOpens = 0;
     upstream = 'live';
     attempt = 0;
     lastMessageAt = Date.now();
@@ -146,6 +150,12 @@ function connect(attempt = 0) {
   ws.onclose = (e) => {
     upstream = 'down';
     clearInterval(watchdog);
+    // A key without the DataApi permission is rejected at the handshake; fall back to the RPC stream instead of retrying forever.
+    if (!opened && SOURCE === 'solami' && ++rejectedOpens >= 3) {
+      console.warn('[relay] Solami Blur rejected the connection 3 times (check the DataApi permission); switching to RPC logsSubscribe');
+      SOURCE = 'rpc';
+      attempt = 0;
+    }
     const delay = Math.min(60_000, 1000 * 2 ** attempt);
     console.warn(`[relay] upstream closed (${e.code}); reconnecting in ${delay} ms`);
     setTimeout(() => connect(attempt + 1), delay);

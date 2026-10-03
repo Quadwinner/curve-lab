@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtCompact, fmtDuration, fmtPct, fmtQuote, plural, shortAddr, timeAgo } from '@/lib/format';
+import { fmtCompact, fmtDuration, fmtMultiple, fmtPct, fmtQuote, plural, shortAddr, timeAgo } from '@/lib/format';
 
 describe('format', () => {
   it('compacts numbers', () => {
@@ -32,5 +32,15 @@ describe('plural', () => {
     expect(plural(1, 'launch', 'launches')).toBe('1 launch');
     expect(plural(2, 'launch', 'launches')).toBe('2 launches');
     expect(plural(1500, 'launch', 'launches')).toBe('1.5K launches');
+  });
+});
+
+describe('fmtMultiple', () => {
+  it('formats price multiples', () => {
+    expect(fmtMultiple(12.3)).toBe('12×');
+    expect(fmtMultiple(1.53)).toBe('1.5×');
+    expect(fmtMultiple(0.364)).toBe('0.36×');
+    expect(fmtMultiple(0.0000221)).toBe('<0.01×');
+    expect(fmtMultiple(null)).toBe('—');
   });
 });

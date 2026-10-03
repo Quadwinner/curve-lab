@@ -9,6 +9,8 @@ import { CONFIG_SIZE, CONFIG_SLICE, DBC_PROGRAM_ID, POOL_SIZE, POOL_SLICE } from
 import { decodePoolSlice, type PoolRow } from '../src/lib/dbc/pool';
 import type { Meta, PresetSummary } from '../src/lib/data/types';
 import { aggregate } from '../src/lib/metrics/aggregate';
+import { aggregatePost } from '../src/lib/metrics/afterGrad';
+import { DAMM_POOL_SIZE, DAMM_SLICE, DAMM_V2_PROGRAM_ID, decodeDammSlice } from '../src/lib/damm/layout';
 import { classify } from '../src/lib/metrics/classify';
 import { PoolTable } from '../src/lib/metrics/table';
 import { getAccountsData } from '../src/lib/rpc/accounts';
@@ -121,24 +123,52 @@ const repConfigs = stats.map((s) => configKeys[s.topConfig.index]);
 const fullConfigs = await getAccountsData(rpc, repConfigs);
 const quotes = await resolveQuotes(rpc, [...new Set(stats.map((s) => presets[s.index].quoteMint))]);
 
+const paramsByStat = stats.map((s, i) => {
+  const data = fullConfigs.get(repConfigs[i]);
+  return data ? decodeConfigParams(data.subarray(CONFIG_SLICE.offset)) : null;
+});
+
+const graduationSqrt = new Map<number, number>();
+stats.forEach((s, i) => {
+  const p = paramsByStat[i];
+  if (p) graduationSqrt.set(s.index, Number(p.migrationSqrtPrice));
+});
+const quoteOfPreset = new Map(stats.map((s, i) => [s.index, paramsByStat[i]?.quoteMint]));
+const graduatedRow = new Map<string, number>();
+for (let i = 0; i < table.size; i++) if (table.cls[i] !== 0 && graduationSqrt.has(table.preset[i])) graduatedRow.set(table.mintAt(i), i);
+const bestLiquidity = new Map<number, bigint>();
+const damm = await streamPartitioned({
+  rpcUrl: rpc, programId: DAMM_V2_PROGRAM_ID, dataSize: DAMM_POOL_SIZE, slice: DAMM_SLICE, partitionOffset: 168, partitions: poolPartitions, attempts: 8, allowFailures: true,
+  onPartition: (d, n) => d % 64 === 0 && log(`damm v2 partitions ${d}/${n}`),
+  onAccount: (_k, d) => {
+    const pool = decodeDammSlice(d);
+    const row = graduatedRow.get(pool.tokenAMint);
+    if (row === undefined || pool.tokenBMint !== quoteOfPreset.get(table.preset[row])) return;
+    if (pool.liquidity <= (bestLiquidity.get(row) ?? -1n)) return;
+    bestLiquidity.set(row, pool.liquidity);
+    table.setPostSqrt(row, Number(pool.sqrtPrice));
+  },
+});
+log(`damm v2 pools streamed: ${damm.count}; matched ${bestLiquidity.size} of ${graduatedRow.size} graduated launches${damm.failed.length ? `; ${damm.failed.length} partitions skipped` : ''}`);
+const post = aggregatePost(table, [...graduationSqrt.keys()], graduationSqrt);
+
 const summaries: PresetSummary[] = [];
 const staging = `${values.out!}.next`;
 rmSync(staging, { recursive: true, force: true });
 mkdirSync(join(staging, 'preset'), { recursive: true });
 let detailed = 0;
 stats.forEach((s, i) => {
-  const data = fullConfigs.get(repConfigs[i]);
-  if (!data) {
+  const params = paramsByStat[i];
+  if (!params) {
     skipped++;
     return;
   }
-  const params = decodeConfigParams(data.subarray(CONFIG_SLICE.offset));
   const id = presets[s.index].presetId;
-  const summary = buildSummary(id, s, params, quotes.get(params.quoteMint)!);
+  const summary = buildSummary(id, s, params, quotes.get(params.quoteMint)!, post.get(s.index));
   summaries.push(summary);
   if (s.launches >= minDetail) {
     const recent = s.recent.map((r) => ({ pool: table.keys[r], mint: table.mintAt(r), launchTime: Number.isNaN(table.launchTime[r]) ? null : table.launchTime[r], cls: table.clsAt(r), progress: table.progress[r] }));
-    const detail = buildDetail(summary, s, params, { address: repConfigs[i], launches: s.topConfig.launches }, recent);
+    const detail = buildDetail(summary, s, params, { address: repConfigs[i], launches: s.topConfig.launches }, recent, post.get(s.index));
     writeFileSync(join(staging, 'preset', `${id}.json`), JSON.stringify(detail));
     detailed++;
   }

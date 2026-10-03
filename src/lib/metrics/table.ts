@@ -1,4 +1,4 @@
-import bs58 from 'bs58';
+import { pubkey } from '../dbc/bytes';
 import type { PoolRow } from '../dbc/pool';
 import type { Classified, LaunchClass } from './classify';
 
@@ -15,6 +15,7 @@ export class PoolTable {
   gradSeconds: number[] = [];
   raised: number[] = [];
   fees: number[] = [];
+  postSqrt: number[] = [];
   private mints = new Uint8Array(32 * 1024);
 
   get size() {
@@ -22,7 +23,7 @@ export class PoolTable {
   }
 
   reset() {
-    for (const col of [this.keys, this.preset, this.config, this.cls, this.bucket, this.progress, this.launchTime, this.gradSeconds, this.raised, this.fees]) col.length = 0;
+    for (const col of [this.keys, this.preset, this.config, this.cls, this.bucket, this.progress, this.launchTime, this.gradSeconds, this.raised, this.fees, this.postSqrt]) col.length = 0;
   }
 
   push(key: string, presetIdx: number, configIdx: number, c: Classified, pool: PoolRow) {
@@ -43,6 +44,11 @@ export class PoolTable {
     this.gradSeconds.push(c.gradSeconds ?? Number.NaN);
     this.raised.push(Number(pool.quoteReserve));
     this.fees.push(Number(pool.tradingQuoteFee));
+    this.postSqrt.push(Number.NaN);
+  }
+
+  setPostSqrt(i: number, sqrtPrice: number) {
+    this.postSqrt[i] = sqrtPrice;
   }
 
   clsAt(i: number): LaunchClass {
@@ -50,6 +56,6 @@ export class PoolTable {
   }
 
   mintAt(i: number): string {
-    return bs58.encode(this.mints.subarray(i * 32, i * 32 + 32));
+    return pubkey(this.mints, i * 32);
   }
 }

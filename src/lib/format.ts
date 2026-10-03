@@ -22,3 +22,11 @@ export function fmtDuration(s: number | null): string {
 export const timeAgo = (t: number, now = Date.now() / 1000) => `${fmtDuration(Math.max(0, now - t))} ago`;
 
 export const plural = (n: number, one: string, many: string) => `${fmtCompact(n)} ${n === 1 ? one : many}`;
+
+export function fmtMultiple(m: number | null): string {
+  if (m === null) return '—';
+  if (m >= 10) return `${Math.round(m)}×`;
+  if (m >= 1) return `${m.toFixed(1)}×`;
+  if (m >= 0.01) return `${m.toFixed(2)}×`;
+  return '<0.01×';
+}

@@ -47,11 +47,12 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
         </p>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatCard label="Launches" value={fmtCompact(t.pools)} hint={`${fmtCompact(t.presets)} setting groups · ${fmtCompact(t.configs)} configs`} delay={60} />
         <StatCard label="Instant graduations" value={fmtPct(t.instant / Math.max(1, t.pools))} hint={`${fmtCompact(t.instant)} curves done < 60 s`} tone="warn" delay={120} />
         <StatCard label="Pre-funded launchpads" value={m ? fmtPct(m.prefundedLaunches / Math.max(1, t.pools)) : '—'} hint={m ? `of launches · ${fmtCompact(m.prefundedGroups)} groups graduate ≥ 90%` : undefined} tone="warn" delay={180} />
         <StatCard label="Open-market graduation" value={m ? fmtPct(m.marketOrganic / Math.max(1, m.marketEligible)) : '—'} hint="excluding instant and pre-funded" tone="accent" delay={240} />
+        <StatCard label="Dead after graduation" value={m?.postCount ? fmtPct(m.postDead / m.postCount) : '—'} hint={m?.postCount ? `of ${fmtCompact(m.postCount)} graduated tokens now < 10% of graduation price` : 'price on DAMM v2 vs graduation'} tone="warn" delay={300} />
       </section>
 
       <section className="flex flex-wrap items-center gap-2">
@@ -85,6 +86,7 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
           <li>A <b>setting group</b> is every config account with byte-identical settings (curve, fees, thresholds, LP split), ignoring who claims the fees.</li>
           <li><b>Instant</b>: the curve completed within 60 s of the launch, which almost always means it was bought out in the creation transaction.</li>
           <li><b>Organic graduation</b> = graduated launches ÷ non-instant launches, shown once a group has at least 5 non-instant launches.</li>
+          <li><b>Holding up</b>: for graduated tokens, the current price in the Meteora DAMM v2 pool they migrated to, compared with the graduation price. Shown as the share at or above graduation price and the median multiple; &quot;dead&quot; means below 0.1×.</li>
           <li><b>Pre-funded</b>: a group with ≥ 20 launches where ≥ 90% complete their curve. On mainnet completion is bimodal (most groups graduate under 20% or over 80%), so these are launchpads buying out their own curves, often a few blocks after creation.</li>
           <li>Slot-activated launches are timed with real block times sampled every 10,000 slots (error under 20 s).</li>
           <li>Raised and fees are quote-token amounts summed over every launch in the group.</li>

@@ -4,6 +4,7 @@ import { feeScheduleBps } from '../lib/curve/fees';
 import { curveSeries, marketCap, sparkline } from '../lib/curve/math';
 import { featureVector } from '../lib/curve/similarity';
 import type { PresetStats } from '../lib/metrics/aggregate';
+import type { PostStats } from '../lib/metrics/afterGrad';
 
 const finiteOrNull = (x: number) => (Number.isFinite(x) && x > 0 ? x : null);
 
@@ -11,7 +12,7 @@ const finiteOrNull = (x: number) => (Number.isFinite(x) && x > 0 ? x : null);
 export const PREFUNDED_MIN_LAUNCHES = 20;
 export const PREFUNDED_COMPLETION = 0.9;
 
-export function buildSummary(id: string, s: PresetStats, p: PresetParams, quote: QuoteInfo): PresetSummary {
+export function buildSummary(id: string, s: PresetStats, p: PresetParams, quote: QuoteInfo, post?: PostStats): PresetSummary {
   const scale = 10 ** quote.decimals;
   const fee = feeScheduleBps(p);
   const series = curveSeries(BigInt(p.sqrtStartPrice), p.curve, BigInt(p.migrationSqrtPrice), p.tokenDecimal, quote.decimals);
@@ -39,6 +40,7 @@ export function buildSummary(id: string, s: PresetStats, p: PresetParams, quote:
     spark: sparkline(series, 16),
     lastLaunch: s.lastLaunch,
     prefunded: s.launches >= PREFUNDED_MIN_LAUNCHES && (s.organic + s.instant) / s.launches >= PREFUNDED_COMPLETION,
+    post: post && post.count > 0 ? { count: post.count, median: post.median, above: post.above, dead: post.dead } : null,
   };
 }
 
@@ -48,6 +50,7 @@ export function buildDetail(
   p: PresetParams,
   topConfig: { address: string; launches: number },
   recent: RecentLaunch[],
+  post?: PostStats,
 ): PresetDetail {
   return {
     ...summary,
@@ -60,6 +63,7 @@ export function buildDetail(
     topConfig,
     configCount: s.configCount,
     recent,
+    postBuckets: post?.buckets ?? [0, 0, 0, 0, 0, 0],
   };
 }
 
@@ -88,9 +92,14 @@ export function publishCheck(published: Meta | null, next: Meta): string | null 
   return sanityCheck(published, next);
 }
 
-export function marketTotals(summaries: Pick<PresetSummary, 'launches' | 'instant' | 'organic' | 'prefunded'>[]): MarketTotals {
-  const t: MarketTotals = { prefundedGroups: 0, prefundedLaunches: 0, marketOrganic: 0, marketEligible: 0 };
+export function marketTotals(summaries: (Pick<PresetSummary, 'launches' | 'instant' | 'organic' | 'prefunded'> & { post?: PresetSummary['post'] })[]): MarketTotals {
+  const t: MarketTotals = { prefundedGroups: 0, prefundedLaunches: 0, marketOrganic: 0, marketEligible: 0, postCount: 0, postAbove: 0, postDead: 0 };
   for (const s of summaries) {
+    if (s.post) {
+      t.postCount += s.post.count;
+      t.postAbove += Math.round(s.post.above * s.post.count);
+      t.postDead += Math.round(s.post.dead * s.post.count);
+    }
     if (s.prefunded) {
       t.prefundedGroups++;
       t.prefundedLaunches += s.launches;

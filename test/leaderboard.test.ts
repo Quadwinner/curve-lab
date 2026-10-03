@@ -6,7 +6,7 @@ const p = (id: string, o: Partial<PresetSummary>): PresetSummary => ({
   id, quoteMint: 'So11111111111111111111111111111111111111112', quote: { symbol: 'SOL', decimals: 9 },
   launches: 100, organic: 10, instant: 0, open: 90, organicRate: 0.1, instantShare: 0, medianGradSeconds: 600,
   raised: 1, fees: 1, threshold: 85, startFeeBps: 100, endFeeBps: 100, feeMode: 0, dynamicFee: false,
-  creatorFeePct: 0, startMcap: 30, migrationMcap: 400, spark: [], lastLaunch: 1, prefunded: false, ...o,
+  creatorFeePct: 0, startMcap: 30, migrationMcap: 400, spark: [], lastLaunch: 1, prefunded: false, post: null, ...o,
 });
 const all = [
   p('a', { launches: 30, organicRate: 0.5 }),
@@ -64,5 +64,17 @@ describe('pre-funded groups on the leaderboard', () => {
     expect(queryPresets(rows, { sort: 'launches', quote: 'all', min: 5, page: 1, prefunded: 'hide' }).rows.map((r) => r.id)).toEqual(['real']);
     expect(parseQuery({ pf: 'hide' }).prefunded).toBe('hide');
     expect(parseQuery({}).prefunded).toBe('show');
+  });
+});
+
+describe('holding-up sort', () => {
+  it('ranks groups by share of graduated tokens at or above graduation price, unknowns last', () => {
+    const rows = [
+      p('a', { post: { count: 50, median: 0.2, above: 0.1, dead: 0.6 } }),
+      p('b', { post: { count: 50, median: 1.2, above: 0.7, dead: 0.1 } }),
+      p('c', { post: null }),
+    ];
+    expect(queryPresets(rows, { sort: 'holding', quote: 'all', min: 5, page: 1 }).rows.map((r) => r.id)).toEqual(['b', 'a', 'c']);
+    expect(parseQuery({ sort: 'holding' }).sort).toBe('holding');
   });
 });

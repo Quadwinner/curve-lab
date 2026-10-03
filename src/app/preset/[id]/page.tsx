@@ -7,8 +7,9 @@ import { BoltIcon } from '@/components/icons';
 import { RecentLaunches } from '@/components/RecentLaunches';
 import { StatCard } from '@/components/StatCard';
 import { loadPreset } from '@/lib/data/load';
-import { fmtCompact, fmtDuration, fmtPct, fmtQuote, plural, shortAddr } from '@/lib/format';
+import { fmtCompact, fmtDuration, fmtMultiple, fmtPct, fmtQuote, plural, shortAddr } from '@/lib/format';
 import { presetLabel } from '@/lib/leaderboard';
+import { POST_LABELS } from '@/lib/metrics/afterGrad';
 import { BUCKET_LABELS } from '@/lib/metrics/classify';
 
 export const revalidate = 300;
@@ -88,6 +89,25 @@ export default async function PresetPage({ params }: PageProps<'/preset/[id]'>) 
           <BarChart bars={p.weekly.map((w) => ({ label: new Date(w.week * 1000).toISOString().slice(5, 10), value: w.launches, note: `${w.organic} organic graduations` }))} />
         </Panel>
       </div>
+
+      <Panel title="After graduation" caption="Graduated tokens on these settings, priced today in the Meteora DAMM v2 pool they migrated to, relative to their graduation price.">
+        {p.post ? (
+          <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+            <dl className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+              <div><dt className="label-caps">tracked</dt><dd className="readout text-2xl text-ink">{fmtCompact(p.post.count)}</dd></div>
+              <div><dt className="label-caps">median price now</dt><dd className="readout text-2xl text-ink">{fmtMultiple(p.post.median)}</dd></div>
+              <div><dt className="label-caps">at or above graduation</dt><dd className="readout text-2xl text-accent-text">{fmtPct(p.post.above)}</dd></div>
+              <div><dt className="label-caps">below 0.1×</dt><dd className="readout text-2xl text-warn-text">{fmtPct(p.post.dead)}</dd></div>
+            </dl>
+            <BarChart
+              bars={POST_LABELS.map((label, i) => ({ label, value: p.postBuckets[i] ?? 0, tone: i === 0 ? ('warn' as const) : i >= 3 ? ('good' as const) : ('neutral' as const), note: 'price now ÷ graduation price' }))}
+              labelled={[POST_LABELS[0], POST_LABELS[3]]}
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-ink-3">No DAMM v2 pools found for tokens on these settings (they may migrate to DAMM v1, or none graduated yet).</p>
+        )}
+      </Panel>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
         <div className="space-y-4">

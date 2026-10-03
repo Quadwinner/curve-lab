@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { PresetSummary } from '@/lib/data/types';
-import { fmtCompact, fmtDuration, fmtPct, fmtQuote, timeAgo } from '@/lib/format';
+import { fmtCompact, fmtDuration, fmtMultiple, fmtPct, fmtQuote, timeAgo } from '@/lib/format';
 import { presetLabel, type LeaderboardQuery, type SortKey } from '@/lib/leaderboard';
 import { Sparkline } from './charts/Sparkline';
 import { ArrowIcon, BoltIcon } from './icons';
@@ -38,6 +38,16 @@ function OrganicMeter({ rate, prefunded }: { rate: number | null; prefunded: boo
   );
 }
 
+function HoldingCell({ post }: { post: PresetSummary['post'] }) {
+  if (!post) return <span className="text-ink-3" title="No DAMM v2 pool found for graduated tokens">—</span>;
+  return (
+    <div className="flex items-center gap-2" title={`${fmtPct(post.above)} of ${fmtCompact(post.count)} graduated tokens trade at or above their graduation price; ${fmtPct(post.dead)} are below 10% of it. Median now: ${fmtMultiple(post.median)}`}>
+      <span className="readout w-12 text-right text-ink">{fmtPct(post.above)}</span>
+      <span className="readout text-xs text-ink-3">{fmtMultiple(post.median)}</span>
+    </div>
+  );
+}
+
 function InstantCell({ share }: { share: number }) {
   if (share < 0.005) return <span className="readout text-ink-3">0%</span>;
   const heavy = share >= 0.5;
@@ -52,13 +62,14 @@ function InstantCell({ share }: { share: number }) {
 export function LeaderboardTable({ rows, q, offset }: { rows: PresetSummary[]; q: LeaderboardQuery; offset: number }) {
   return (
     <div className="overflow-x-auto rounded-md border border-line bg-panel/70">
-      <table className="w-full min-w-[1080px] whitespace-nowrap text-sm">
+      <table className="w-full min-w-[1180px] whitespace-nowrap text-sm">
         <thead className="label-caps border-b border-line text-left">
           <tr>
             <th className="px-3 py-2 font-normal">#</th>
             <th className="px-3 py-2 font-normal">Setting group</th>
             <SortHeader q={q} k="launches" className="text-right">Launches</SortHeader>
             <SortHeader q={q} k="organic">Organic grad.</SortHeader>
+            <SortHeader q={q} k="holding">Holding up</SortHeader>
             <th className="px-3 py-2 font-normal">Instant</th>
             <SortHeader q={q} k="speed">Median time</SortHeader>
             <SortHeader q={q} k="raised" className="text-right">Raised</SortHeader>
@@ -79,6 +90,7 @@ export function LeaderboardTable({ rows, q, offset }: { rows: PresetSummary[]; q
               </td>
               <td className="readout px-3 py-2.5 text-right">{fmtCompact(p.launches)}</td>
               <td className="px-3 py-2.5"><OrganicMeter rate={p.organicRate} prefunded={p.prefunded} /></td>
+              <td className="px-3 py-2.5"><HoldingCell post={p.post} /></td>
               <td className="px-3 py-2.5"><InstantCell share={p.instantShare} /></td>
               <td className="readout px-3 py-2.5 text-ink-2">{fmtDuration(p.medianGradSeconds)}</td>
               <td className="readout px-3 py-2.5 text-right text-ink-2">{fmtQuote(p.raised, p.quote.symbol)}</td>

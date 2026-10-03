@@ -117,8 +117,12 @@ describe('pre-funded launchpads', () => {
   it('needs at least 20 launches to call a group pre-funded', () => {
     expect(buildSummary('a'.repeat(16), stats({ launches: 10, instant: 5, organic: 5, open: 0 }), params, { symbol: 'SOL', decimals: 9 }).prefunded).toBe(false);
   });
+  it('adds up price-after-graduation counts across groups', () => {
+    const t = marketTotals([{ launches: 10, instant: 0, organic: 4, prefunded: false, post: { count: 4, median: 0.5, above: 0.25, dead: 0.5 } }, { launches: 5, instant: 0, organic: 0, prefunded: false, post: null }]);
+    expect(t).toMatchObject({ postCount: 4, postAbove: 1, postDead: 2 });
+  });
   it('computes open-market totals without pre-funded groups', () => {
     const s = (launches: number, instant: number, organic: number, prefunded: boolean) => ({ launches, instant, organic, prefunded }) as never;
-    expect(marketTotals([s(100, 90, 10, true), s(1000, 100, 9, false), s(50, 0, 1, false)])).toEqual({ prefundedGroups: 1, prefundedLaunches: 100, marketOrganic: 10, marketEligible: 950 });
+    expect(marketTotals([s(100, 90, 10, true), s(1000, 100, 9, false), s(50, 0, 1, false)])).toEqual({ prefundedGroups: 1, prefundedLaunches: 100, marketOrganic: 10, marketEligible: 950, postCount: 0, postAbove: 0, postDead: 0 });
   });
 });

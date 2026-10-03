@@ -1,6 +1,6 @@
 import type { PresetSummary } from './data/types';
 
-export type SortKey = 'launches' | 'organic' | 'speed' | 'raised' | 'fees' | 'recent';
+export type SortKey = 'launches' | 'organic' | 'holding' | 'speed' | 'raised' | 'fees' | 'recent';
 export interface LeaderboardQuery {
   sort: SortKey;
   quote: 'all' | 'SOL' | 'USDC' | 'stocks' | 'other';
@@ -12,6 +12,7 @@ export interface LeaderboardQuery {
 const KEY: Record<SortKey, (p: PresetSummary) => number | null> = {
   launches: (p) => p.launches,
   organic: (p) => (p.prefunded ? null : p.organicRate),
+  holding: (p) => p.post?.above ?? null,
   speed: (p) => (p.medianGradSeconds === null ? null : -p.medianGradSeconds),
   raised: (p) => p.raised,
   fees: (p) => p.fees,

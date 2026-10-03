@@ -25,6 +25,12 @@ describe('queryPresets', () => {
   it('filters by quote symbol', () => {
     expect(queryPresets(all, { sort: 'launches', quote: 'USDC', min: 5, page: 1 }).rows.map((r) => r.id)).toEqual(['d']);
   });
+  it('filters stock-quoted presets (xStocks)', () => {
+    const stock = p('s', { quote: { symbol: 'TSLAx', decimals: 8 } });
+    const rows = queryPresets([...all, stock], { sort: 'launches', quote: 'stocks', min: 5, page: 1 }).rows;
+    expect(rows.map((r) => r.id)).toEqual(['s']);
+    expect(queryPresets([...all, stock], { sort: 'launches', quote: 'other', min: 5, page: 1 }).rows.map((r) => r.id)).toEqual(['s']);
+  });
   it('paginates', () => {
     const r = queryPresets(all, { sort: 'launches', quote: 'all', min: 5, page: 2 }, 3);
     expect(r).toMatchObject({ total: 4, pages: 2 });

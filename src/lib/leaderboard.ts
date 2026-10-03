@@ -3,7 +3,7 @@ import type { PresetSummary } from './data/types';
 export type SortKey = 'launches' | 'organic' | 'speed' | 'raised' | 'fees' | 'recent';
 export interface LeaderboardQuery {
   sort: SortKey;
-  quote: 'all' | 'SOL' | 'USDC' | 'other';
+  quote: 'all' | 'SOL' | 'USDC' | 'stocks' | 'other';
   min: number;
   page: number;
 }
@@ -17,13 +17,15 @@ const KEY: Record<SortKey, (p: PresetSummary) => number | null> = {
   recent: (p) => p.lastLaunch,
 };
 
+export const isStockQuote = (symbol: string) => /^[A-Z][A-Z.]*x$/.test(symbol);
+
 export function parseQuery(sp: Record<string, string | string[] | undefined>): LeaderboardQuery {
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : sp[k]);
   const sort = (one('sort') ?? 'launches') as SortKey;
   const quote = (one('quote') ?? 'all') as LeaderboardQuery['quote'];
   return {
     sort: sort in KEY ? sort : 'launches',
-    quote: ['all', 'SOL', 'USDC', 'other'].includes(quote) ? quote : 'all',
+    quote: ['all', 'SOL', 'USDC', 'stocks', 'other'].includes(quote) ? quote : 'all',
     min: Math.max(5, Number(one('min')) || 20),
     page: Math.max(1, Number(one('page')) || 1),
   };
@@ -31,11 +33,13 @@ export function parseQuery(sp: Record<string, string | string[] | undefined>): L
 
 export function queryPresets(all: PresetSummary[], q: LeaderboardQuery, pageSize = 50) {
   const key = KEY[q.sort];
-  const filtered = all.filter(
-    (p) =>
-      p.launches >= q.min &&
-      (q.quote === 'all' || (q.quote === 'other' ? !['SOL', 'USDC'].includes(p.quote.symbol) : p.quote.symbol === q.quote)),
-  );
+  const matchesQuote = (p: PresetSummary) => {
+    if (q.quote === 'all') return true;
+    if (q.quote === 'stocks') return isStockQuote(p.quote.symbol);
+    if (q.quote === 'other') return !['SOL', 'USDC'].includes(p.quote.symbol);
+    return p.quote.symbol === q.quote;
+  };
+  const filtered = all.filter((p) => p.launches >= q.min && matchesQuote(p));
   filtered.sort((a, b) => {
     const x = key(a);
     const y = key(b);

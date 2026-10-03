@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: PageProps<'/'>) {
 
       <section className="flex flex-wrap items-center gap-2">
         <span className="label-caps mr-1">quote</span>
-        {(['all', 'SOL', 'USDC', 'other'] as const).map((quote) => (
+        {(['all', 'SOL', 'USDC', 'stocks', 'other'] as const).map((quote) => (
           <Chip key={quote} href={link({ quote, page: 1 })} active={q.quote === quote}>{quote}</Chip>
         ))}
         <span className="label-caps ml-4 mr-1">min launches</span>

@@ -5,7 +5,7 @@ type AccountValue = { data: [string, string] } | null;
 export async function getAccountsData(
   rpcUrl: string,
   keys: string[],
-  opts: { slice?: { offset: number; length: number }; batch?: number; concurrency?: number } = {},
+  opts: { slice?: { offset: number; length: number }; batch?: number; concurrency?: number; attempts?: number; timeoutMs?: number } = {},
 ): Promise<Map<string, Uint8Array | null>> {
   const batch = opts.batch ?? 100;
   const chunks: string[][] = [];
@@ -16,7 +16,11 @@ export async function getAccountsData(
     while (next < chunks.length) {
       const chunk = chunks[next++];
       const config = { encoding: 'base64', commitment: 'confirmed', ...(opts.slice ? { dataSlice: opts.slice } : {}) };
-      const res = await withRetry(() => rpcCall<{ value: AccountValue[] }>(rpcUrl, 'getMultipleAccounts', [chunk, config]), { label: 'getMultipleAccounts', attempts: 8, baseMs: 2000 });
+      const res = await withRetry(() => rpcCall<{ value: AccountValue[] }>(rpcUrl, 'getMultipleAccounts', [chunk, config], opts.timeoutMs), {
+        label: 'getMultipleAccounts',
+        attempts: opts.attempts ?? 8,
+        baseMs: 2000,
+      });
       res.value.forEach((v, i) => out.set(chunk[i], v ? Buffer.from(v.data[0], 'base64') : null));
     }
   };

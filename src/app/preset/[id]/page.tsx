@@ -116,7 +116,7 @@ export default async function PresetPage({ params }: PageProps<'/preset/[id]'>) 
           </Panel>
         </div>
         <Panel title="Latest launches" caption="Newest tokens on these settings; open curves refresh from mainnet every 15 s.">
-          <RecentLaunches launches={p.recent} threshold={p.params.migrationQuoteThreshold} />
+          <RecentLaunches launches={p.recent} presetId={p.id} />
         </Panel>
       </div>
     </div>

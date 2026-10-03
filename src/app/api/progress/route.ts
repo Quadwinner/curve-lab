@@ -1,13 +1,17 @@
-import { parseProgressRequest, progressFor } from '@/lib/live/progressServer';
+import { loadPreset } from '@/lib/data/load';
+import { openPools, progressFor } from '@/lib/live/progressServer';
 
 const RPC = process.env.RPC_URL ?? 'https://api.mainnet-beta.solana.com';
 
-export async function POST(request: Request) {
-  const parsed = parseProgressRequest(await request.json().catch(() => null));
-  if (!parsed) return Response.json({ error: 'expected { pools: base58[] (max 20), threshold: digits }' }, { status: 400 });
+export async function GET(request: Request) {
+  const id = new URL(request.url).searchParams.get('preset') ?? '';
+  const preset = await loadPreset(id);
+  if (!preset) return Response.json({ error: 'unknown preset' }, { status: 404 });
+  const pools = openPools(preset.recent);
   try {
-    return Response.json({ progress: await progressFor(RPC, parsed.pools, parsed.threshold), at: Math.floor(Date.now() / 1000) });
+    const progress = pools.length ? await progressFor(RPC, pools, BigInt(preset.params.migrationQuoteThreshold)) : {};
+    return Response.json({ progress, at: Math.floor(Date.now() / 1000) }, { headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=20' } });
   } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: 502 });
+    return Response.json({ error: (e as Error).message }, { status: 502, headers: { 'Cache-Control': 'public, s-maxage=5' } });
   }
 }

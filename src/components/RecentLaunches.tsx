@@ -4,31 +4,31 @@ import type { RecentLaunch } from '@/lib/data/types';
 import { shortAddr, timeAgo } from '@/lib/format';
 import { BoltIcon } from './icons';
 
-export function RecentLaunches({ launches, threshold }: { launches: RecentLaunch[]; threshold: string }) {
+export function RecentLaunches({ launches, presetId }: { launches: RecentLaunch[]; presetId: string }) {
   const [live, setLive] = useState<Record<string, number>>({});
   const [polled, setPolled] = useState<number | null>(null);
   useEffect(() => {
-    const open = launches.filter((l) => l.cls === 'open').map((l) => l.pool);
-    if (!open.length) return;
+    if (!launches.some((l) => l.cls === 'open')) return;
+    let inFlight = false;
     const poll = async () => {
+      if (inFlight || document.visibilityState !== 'visible') return;
+      inFlight = true;
       try {
-        const res = await fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pools: open, threshold }),
-        });
+        const res = await fetch(`/api/progress?preset=${presetId}`);
         if (!res.ok) return;
         const json = (await res.json()) as { progress: Record<string, number>; at: number };
         setLive(json.progress);
         setPolled(json.at);
       } catch {
-        // public RPC is best-effort; keep the last snapshot
+        // best-effort; keep the last snapshot
+      } finally {
+        inFlight = false;
       }
     };
     poll();
     const id = setInterval(poll, 15_000);
     return () => clearInterval(id);
-  }, [launches, threshold]);
+  }, [launches, presetId]);
   return (
     <div>
       <ul className="divide-y divide-line/60">

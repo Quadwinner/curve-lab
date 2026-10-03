@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getAccountsData } from '@/lib/rpc/accounts';
-import { parseAccounts, streamProgramAccounts } from '@/lib/rpc/gpaStream';
+import { parseAccounts, streamPartitioned, streamProgramAccounts } from '@/lib/rpc/gpaStream';
 import { withRetry } from '@/lib/rpc/http';
 
 const acct = (key: string, b64: string) =>
@@ -88,5 +88,29 @@ describe('withRetry', () => {
   });
   it('gives up after the last attempt', async () => {
     await expect(withRetry(async () => Promise.reject(new Error('boom')), { attempts: 2, baseMs: 1 })).rejects.toThrow('boom');
+  });
+});
+
+describe('streamPartitioned', () => {
+  const bodyFor = (keys: string[]) => `{"jsonrpc":"2.0","result":[${keys.map((k) => realAcct(k, 'AQID')).join(',')}],"id":1}`;
+  const partitionByte = (init: { body: string }) => {
+    const filters = JSON.parse(init.body).params[1].filters as { memcmp?: { offset: number; bytes: string } }[];
+    return filters.find((f) => f.memcmp?.offset === 40)!.memcmp!.bytes;
+  };
+  it('merges every partition and adds the partition filter to existing filters', async () => {
+    const byPart: Record<string, string[]> = { '1': ['A1111'], '2': ['B2222', 'C3333'], '3': [] };
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init: { body: string }) => streamResponse(bodyFor(byPart[partitionByte(init)]))));
+    const keys: string[] = [];
+    const r = await streamPartitioned({ rpcUrl: 'http://rpc', programId: 'p', dataSize: 3, partitionOffset: 40, partitions: [0, 1, 2], onAccount: (k) => keys.push(k) });
+    expect(keys.sort()).toEqual(['A1111', 'B2222', 'C3333']);
+    expect(r.count).toBe(3);
+  });
+  it('retries a failed partition without delivering its accounts twice', async () => {
+    let calls = 0;
+    vi.stubGlobal('fetch', vi.fn(async () => (++calls === 1 ? streamResponse(bodyFor(['A1111']).slice(0, -30)) : streamResponse(bodyFor(['A1111'])))));
+    const keys: string[] = [];
+    await streamPartitioned({ rpcUrl: 'http://rpc', programId: 'p', dataSize: 3, partitionOffset: 40, partitions: [0], retryBaseMs: 1, onAccount: (k) => keys.push(k) });
+    expect(keys).toEqual(['A1111']);
+    expect(calls).toBe(2);
   });
 });

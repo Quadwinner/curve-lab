@@ -45,7 +45,7 @@ export function aggregate(
   t: PoolTable,
   presetCount: number,
   configFeeClaimer: (configIdx: number) => string,
-  opts: { minLaunches: number; nowSec: number; weeks: number; recent: number },
+  opts: { minLaunches: number; minEligible?: number; nowSec: number; weeks: number; recent: number },
 ): PresetStats[] {
   const counts = new Uint32Array(presetCount);
   for (let i = 0; i < t.size; i++) counts[t.preset[i]]++;
@@ -106,7 +106,7 @@ export function aggregate(
   for (const acc of accs.values()) {
     const s = acc.stats;
     const eligible = s.launches - s.instant;
-    s.organicRate = eligible > 0 ? s.organic / eligible : null;
+    s.organicRate = eligible >= (opts.minEligible ?? 5) ? s.organic / eligible : null;
     s.medianGradSeconds = median(acc.grads);
     s.weekly = Array.from({ length: opts.weeks }, (_, k) => {
       const week = lastWeek - (opts.weeks - 1 - k) * WEEK;

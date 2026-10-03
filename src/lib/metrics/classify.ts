@@ -8,6 +8,7 @@ export const BUCKET_LABELS = ['<1%', '1–10%', '10–25%', '25–50%', '50–75
 export interface Clock {
   refSlot: number;
   refTime: number;
+  slotTime?: (slot: number) => number;
 }
 
 export type LaunchClass = 'open' | 'organic' | 'instant';
@@ -23,7 +24,8 @@ export interface Classified {
 export function launchTimeOf(activationPoint: bigint, activationType: number, clock: Clock): number | null {
   if (activationPoint === 0n) return null;
   const v = Number(activationPoint);
-  return activationType === 1 ? v : Math.round(clock.refTime + (v - clock.refSlot) * SLOT_SECONDS);
+  if (activationType === 1) return v;
+  return clock.slotTime ? clock.slotTime(v) : Math.round(clock.refTime + (v - clock.refSlot) * SLOT_SECONDS);
 }
 
 export function classify(pool: PoolRow, threshold: bigint, activationType: number, clock: Clock): Classified {

@@ -27,3 +27,20 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: { attempts?: numb
   }
   throw last;
 }
+
+export type BatchResult<T> = { result?: T; error?: { message: string } };
+
+export async function rpcBatch<T>(url: string, calls: { method: string; params: unknown[] }[], timeoutMs = 90_000): Promise<BatchResult<T>[]> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(calls.map((c, id) => ({ jsonrpc: '2.0', id, method: c.method, params: c.params }))),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`batch: HTTP ${res.status}`);
+  const json = (await res.json()) as ({ id: number } & BatchResult<T>)[];
+  if (!Array.isArray(json)) throw new Error('batch: response is not an array');
+  const out: BatchResult<T>[] = new Array(calls.length).fill({ error: { message: 'missing' } });
+  for (const r of json) out[r.id] = r;
+  return out;
+}

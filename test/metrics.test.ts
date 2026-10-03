@@ -65,7 +65,7 @@ describe('aggregate', () => {
   add(1, 3, {}, 'q1');
   add(1, 3, {}, 'q2');
   const claimers = ['A', 'A', 'B', 'C'];
-  const stats = aggregate(t, 2, (i) => claimers[i], { minLaunches: 5, nowSec: now, weeks: 4, recent: 3 });
+  const stats = aggregate(t, 2, (i) => claimers[i], { minLaunches: 5, minEligible: 1, nowSec: now, weeks: 4, recent: 3 });
 
   it('keeps only presets with enough launches', () => {
     expect(stats.map((s) => s.index)).toEqual([0]);
@@ -76,6 +76,10 @@ describe('aggregate', () => {
     expect(s.buckets).toEqual([0, 1, 0, 0, 1, 0]);
     expect(s.organicRate).toBeCloseTo(0.5);
     expect(s.medianGradSeconds).toBe(1200);
+  });
+  it('withholds the organic rate when too few non-instant launches exist', () => {
+    const strict = aggregate(t, 2, (i) => claimers[i], { minLaunches: 5, nowSec: now, weeks: 4, recent: 3 });
+    expect(strict[0].organicRate).toBeNull();
   });
   it('ranks fee claimers and configs', () => {
     const s = stats[0];

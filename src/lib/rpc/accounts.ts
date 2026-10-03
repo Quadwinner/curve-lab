@@ -16,10 +16,10 @@ export async function getAccountsData(
     while (next < chunks.length) {
       const chunk = chunks[next++];
       const config = { encoding: 'base64', commitment: 'confirmed', ...(opts.slice ? { dataSlice: opts.slice } : {}) };
-      const res = await withRetry(() => rpcCall<{ value: AccountValue[] }>(rpcUrl, 'getMultipleAccounts', [chunk, config]), { label: 'getMultipleAccounts' });
+      const res = await withRetry(() => rpcCall<{ value: AccountValue[] }>(rpcUrl, 'getMultipleAccounts', [chunk, config]), { label: 'getMultipleAccounts', attempts: 8, baseMs: 2000 });
       res.value.forEach((v, i) => out.set(chunk[i], v ? Buffer.from(v.data[0], 'base64') : null));
     }
   };
-  await Promise.all(Array.from({ length: Math.min(opts.concurrency ?? 4, chunks.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(opts.concurrency ?? 2, chunks.length) }, worker));
   return out;
 }

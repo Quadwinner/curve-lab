@@ -7,13 +7,16 @@ const ACCOUNT_RE =
   /"pubkey":"([1-9A-HJ-NP-Za-km-z]+)","account":\{[^{}]*?"data":\["([A-Za-z0-9+/=]*)","base64"\][^{}]*\}|"account":\{[^{}]*?"data":\["([A-Za-z0-9+/=]*)","base64"\][^{}]*\},"pubkey":"([1-9A-HJ-NP-Za-km-z]+)"/g;
 const COMPLETE_TAIL_RE = /\]\s*,\s*"id"\s*:\s*\d+\s*\}\s*$/;
 
+// Regex captures are V8 sliced strings that pin the whole response chunk; copy keys so stored keys don't retain hundreds of MB.
+const freshString = (s: string) => Buffer.from(s, 'latin1').toString('latin1');
+
 export function parseAccounts(buf: string, onAccount: (pubkey: string, data: Uint8Array) => void): { consumed: number; count: number } {
   ACCOUNT_RE.lastIndex = 0;
   let consumed = 0;
   let count = 0;
   for (let m = ACCOUNT_RE.exec(buf); m; m = ACCOUNT_RE.exec(buf)) {
     const [key, data] = m[1] ? [m[1], m[2]] : [m[4], m[3]];
-    onAccount(key, Buffer.from(data, 'base64'));
+    onAccount(freshString(key), Buffer.from(data, 'base64'));
     consumed = ACCOUNT_RE.lastIndex;
     count++;
   }
@@ -72,12 +75,13 @@ type StreamOptions = Parameters<typeof streamProgramAccounts>[0];
 
 // Public RPC stalls on single responses of several hundred MB; 256 memcmp partitions on one byte keep each response a few MB.
 export async function streamPartitioned(
-  o: StreamOptions & { partitionOffset: number; partitions?: number[]; concurrency?: number; retryBaseMs?: number },
+  o: StreamOptions & { partitionOffset: number; partitions?: number[]; concurrency?: number; retryBaseMs?: number; onPartition?: (done: number, total: number) => void },
 ): Promise<{ count: number; bytes: number }> {
   const parts = o.partitions ?? Array.from({ length: 256 }, (_, i) => i);
   let next = 0;
   let count = 0;
   let bytes = 0;
+  let done = 0;
   const worker = async () => {
     while (next < parts.length) {
       const p = parts[next++];
@@ -96,6 +100,8 @@ export async function streamPartitioned(
       for (const [k, d] of buffered) o.onAccount(k, d);
       count += r.count;
       bytes += r.bytes;
+      done++;
+      o.onPartition?.(done, parts.length);
     }
   };
   await Promise.all(Array.from({ length: Math.min(o.concurrency ?? 4, parts.length) }, worker));

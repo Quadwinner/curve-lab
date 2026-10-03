@@ -57,6 +57,7 @@ log(`config cache: ${cache.size}`);
 if (cache.size === 0 && !partial) {
   const r = await streamPartitioned({
     rpcUrl: rpc, programId: DBC_PROGRAM_ID, dataSize: CONFIG_SIZE, slice: CONFIG_SLICE, partitionOffset: 40,
+    onPartition: (d, n) => d % 32 === 0 && log(`config partitions ${d}/${n} (${cache.size} configs, heap ${(process.memoryUsage().heapUsed / 1e6).toFixed(0)} MB)`),
     onAccount: (k, d) => cache.set(k, configEntryFromBody(d)),
   });
   log(`configs streamed: ${r.count} (${(r.bytes / 1e6).toFixed(0)} MB)`);
@@ -90,6 +91,7 @@ function add(key: string, row: PoolRow, e: ConfigEntry) {
 const pending: { key: string; row: PoolRow }[] = [];
 const pools = await streamPartitioned({
   rpcUrl: rpc, programId: DBC_PROGRAM_ID, dataSize: POOL_SIZE, slice: POOL_SLICE, partitionOffset: 136, partitions: poolPartitions,
+  onPartition: (d, n) => d % 32 === 0 && log(`pool partitions ${d}/${n} (${table.size} pools, heap ${(process.memoryUsage().heapUsed / 1e6).toFixed(0)} MB)`),
   onAccount: (k, d) => {
     const row = decodePoolSlice(d);
     const e = cache.get(row.config);

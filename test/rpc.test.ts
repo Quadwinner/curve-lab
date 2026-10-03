@@ -59,6 +59,13 @@ describe('streamProgramAccounts', () => {
     vi.stubGlobal('fetch', vi.fn(async () => streamResponse('{"jsonrpc":"2.0","error":{"code":-32010,"message":"excluded"},"id":1}')));
     await expect(streamProgramAccounts({ ...opts, onAccount: () => {} })).rejects.toThrow(/excluded/);
   });
+  it('accepts providers that put "id" before "result"', async () => {
+    const idFirst = `{"jsonrpc":"2.0","id":1,"result":[${realAcct('Key1111', 'AQID')}]}`;
+    vi.stubGlobal('fetch', vi.fn(async () => streamResponse(idFirst, 6)));
+    await expect(streamProgramAccounts({ ...opts, onAccount: () => {} })).resolves.toMatchObject({ count: 1 });
+    vi.stubGlobal('fetch', vi.fn(async () => streamResponse('{"jsonrpc":"2.0","id":1,"result":[]}')));
+    await expect(streamProgramAccounts({ ...opts, onAccount: () => {} })).resolves.toMatchObject({ count: 0 });
+  });
   it('accepts an empty result', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => streamResponse('{"jsonrpc":"2.0","result":[],"id":1}')));
     await expect(streamProgramAccounts({ ...opts, onAccount: () => {} })).resolves.toMatchObject({ count: 0 });

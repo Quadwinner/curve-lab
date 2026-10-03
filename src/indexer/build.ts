@@ -76,3 +76,8 @@ export function sanityCheck(prev: Meta | null, next: Meta): string | null {
   if (!prev || next.totals.pools >= prev.totals.pools * 0.95) return null;
   return `${next.totals.pools} pools vs ${prev.totals.pools} previously`;
 }
+
+export function publishCheck(published: Meta | null, next: Meta): string | null {
+  if (next.partial) return 'partial run (--pool-partitions) cannot be published';
+  return sanityCheck(published, next);
+}

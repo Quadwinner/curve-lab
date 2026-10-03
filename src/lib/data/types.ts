@@ -51,4 +51,5 @@ export interface Meta {
   refTime: number;
   totals: { pools: number; configs: number; presets: number; listed: number; detailed: number; organic: number; instant: number; open: number };
   skipped: number;
+  partial?: boolean;
 }

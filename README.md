@@ -68,7 +68,7 @@ npm run relay
 NEXT_PUBLIC_RELAY_URL=http://localhost:8787 DATA_DIR=data-out npm run dev
 ```
 
-Publish a local index to the `data` branch with `npm run publish-data`.
+Publish a full local index to the `data` branch with `npm run publish-data`. It refuses partial (`--pool-partitions`) runs and any run whose launch count is more than 5 % below the published data. The indexer stages its output in `data-out.next/` and only swaps it into `data-out/` after its own checks pass.
 
 ### Environment variables
 

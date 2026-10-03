@@ -1,10 +1,10 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { decodeConfigParams } from '@/lib/dbc/config';
 import { CONFIG_SLICE } from '@/lib/dbc/layout';
-import { buildFeature, buildSummary, sanityCheck } from '@/indexer/build';
+import { buildFeature, buildSummary, publishCheck, sanityCheck } from '@/indexer/build';
 import { configEntryFromBody, loadConfigCache, saveConfigCache } from '@/indexer/cache';
 import { KNOWN_QUOTES, resolveQuotes } from '@/indexer/quotes';
 import type { PresetStats } from '@/lib/metrics/aggregate';
@@ -19,6 +19,16 @@ describe('config cache', () => {
     await saveConfigCache(join(dir, 'configs.tsv.gz'), m);
     const back = await loadConfigCache(join(dir, 'configs.tsv.gz'));
     expect(back.get('cfgA')).toEqual(m.get('cfgA'));
+  });
+  it('treats a corrupt cache as empty instead of failing every run', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cl-'));
+    writeFileSync(join(dir, 'configs.tsv.gz'), Buffer.from([0x1f, 0x8b, 0x08, 0x00, 0x01, 0x02]));
+    expect((await loadConfigCache(join(dir, 'configs.tsv.gz'))).size).toBe(0);
+  });
+  it('writes the cache atomically (no temp file left behind)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cl-'));
+    await saveConfigCache(join(dir, 'configs.tsv.gz'), new Map([['cfgA', configEntryFromBody(body)]]));
+    expect(readdirSync(dir)).toEqual(['configs.tsv.gz']);
   });
   it('returns an empty map when no cache exists', async () => {
     expect((await loadConfigCache('/nonexistent/x.tsv.gz')).size).toBe(0);
@@ -79,5 +89,16 @@ describe('sanityCheck', () => {
     expect(sanityCheck(meta(1000), meta(960))).toBeNull();
     expect(sanityCheck(meta(1000), meta(1200))).toBeNull();
     expect(sanityCheck(null, meta(5))).toBeNull();
+  });
+});
+
+describe('publishCheck', () => {
+  const meta = (pools: number, partial?: boolean) => ({ generatedAt: 0, refSlot: 0, refTime: 0, totals: { pools, configs: 0, presets: 0, listed: 0, detailed: 0, organic: 0, instant: 0, open: 0 }, skipped: 0, ...(partial ? { partial } : {}) });
+  it('refuses partial runs', () => {
+    expect(publishCheck(null, meta(9000, true))).toMatch(/partial/);
+  });
+  it('applies the 5% drop rule against the published data', () => {
+    expect(publishCheck(meta(1000), meta(900))).toMatch(/900 pools vs 1000/);
+    expect(publishCheck(meta(1000), meta(1001))).toBeNull();
   });
 });

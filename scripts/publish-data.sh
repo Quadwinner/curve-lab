@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 test -f data-out/meta.json || { echo "data-out/meta.json missing: run the indexer first" >&2; exit 1; }
+npx tsx scripts/check-publish.ts
 remote=$(git remote get-url origin)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

@@ -1,4 +1,4 @@
-import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { createInterface } from 'node:readline';
 import { pipeline } from 'node:stream/promises';
@@ -23,10 +23,15 @@ export function configEntryFromBody(body: Uint8Array): ConfigEntry {
 export async function loadConfigCache(path: string): Promise<Map<string, ConfigEntry>> {
   const out = new Map<string, ConfigEntry>();
   if (!existsSync(path)) return out;
-  const lines = createInterface({ input: createReadStream(path).pipe(createGunzip()), crlfDelay: Infinity });
-  for await (const line of lines) {
-    const [key, presetId, feeClaimer, threshold, activationType, quoteMint] = line.split('\t');
-    if (quoteMint) out.set(key, { presetId, feeClaimer, threshold: BigInt(threshold), activationType: Number(activationType), quoteMint });
+  try {
+    const lines = createInterface({ input: createReadStream(path).pipe(createGunzip()), crlfDelay: Infinity });
+    for await (const line of lines) {
+      const [key, presetId, feeClaimer, threshold, activationType, quoteMint] = line.split('\t');
+      if (quoteMint) out.set(key, { presetId, feeClaimer, threshold: BigInt(threshold), activationType: Number(activationType), quoteMint });
+    }
+  } catch (e) {
+    console.warn(`[cache] ignoring unreadable config cache ${path}: ${(e as Error).message}`);
+    return new Map();
   }
   return out;
 }
@@ -36,5 +41,7 @@ export async function saveConfigCache(path: string, map: Map<string, ConfigEntry
   async function* rows() {
     for (const [k, e] of map) yield `${k}\t${e.presetId}\t${e.feeClaimer}\t${e.threshold}\t${e.activationType}\t${e.quoteMint}\n`;
   }
-  await pipeline(Readable.from(rows()), createGzip(), createWriteStream(path));
+  const tmp = `${path}.tmp`;
+  await pipeline(Readable.from(rows()), createGzip(), createWriteStream(tmp));
+  renameSync(tmp, path);
 }

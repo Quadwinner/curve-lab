@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { buildDetail, buildFeature, buildSummary, sanityCheck } from '../src/indexer/build';
@@ -122,8 +122,9 @@ const fullConfigs = await getAccountsData(rpc, repConfigs);
 const quotes = await resolveQuotes(rpc, [...new Set(stats.map((s) => presets[s.index].quoteMint))]);
 
 const summaries: PresetSummary[] = [];
-rmSync(join(values.out!, 'preset'), { recursive: true, force: true });
-mkdirSync(join(values.out!, 'preset'), { recursive: true });
+const staging = `${values.out!}.next`;
+rmSync(staging, { recursive: true, force: true });
+mkdirSync(join(staging, 'preset'), { recursive: true });
 let detailed = 0;
 stats.forEach((s, i) => {
   const data = fullConfigs.get(repConfigs[i]);
@@ -138,7 +139,7 @@ stats.forEach((s, i) => {
   if (s.launches >= minDetail) {
     const recent = s.recent.map((r) => ({ pool: table.keys[r], mint: table.mintAt(r), launchTime: Number.isNaN(table.launchTime[r]) ? null : table.launchTime[r], cls: table.clsAt(r), progress: table.progress[r] }));
     const detail = buildDetail(summary, s, params, { address: repConfigs[i], launches: s.topConfig.launches }, recent);
-    writeFileSync(join(values.out!, 'preset', `${id}.json`), JSON.stringify(detail));
+    writeFileSync(join(staging, 'preset', `${id}.json`), JSON.stringify(detail));
     detailed++;
   }
 });
@@ -156,6 +157,7 @@ const meta: Meta = {
   refTime: clock.refTime,
   totals: { pools: table.size, configs: configKeys.length, presets: presets.length, listed: summaries.length, detailed, organic, instant, open },
   skipped,
+  ...(partial ? { partial: true } : {}),
 };
 
 async function loadPrevMeta(): Promise<Meta | null> {
@@ -167,12 +169,15 @@ if (!partial) {
   const problem = sanityCheck(await loadPrevMeta(), meta);
   if (problem) {
     console.error(`[indexer] sanity check failed: ${problem}; not publishing`);
+    rmSync(staging, { recursive: true, force: true });
     process.exit(1);
   }
 }
 
-writeFileSync(join(values.out!, 'presets.json'), JSON.stringify(summaries));
-writeFileSync(join(values.out!, 'features.json'), JSON.stringify(summaries.filter((s) => s.launches >= minDetail).map(buildFeature)));
-writeFileSync(join(values.out!, 'meta.json'), JSON.stringify(meta, null, 1));
+writeFileSync(join(staging, 'presets.json'), JSON.stringify(summaries));
+writeFileSync(join(staging, 'features.json'), JSON.stringify(summaries.filter((s) => s.launches >= minDetail).map(buildFeature)));
+writeFileSync(join(staging, 'meta.json'), JSON.stringify(meta, null, 1));
+rmSync(values.out!, { recursive: true, force: true });
+renameSync(staging, values.out!);
 if (!partial) await saveConfigCache(values.cache!, cache);
 log(`done: ${JSON.stringify(meta.totals)} skipped=${skipped}`);

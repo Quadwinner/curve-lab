@@ -5,7 +5,7 @@ import { withRetry } from './http';
 // RPC providers differ in key order: public mainnet sends "pubkey" before "account", others after.
 const ACCOUNT_RE =
   /"pubkey":"([1-9A-HJ-NP-Za-km-z]+)","account":\{[^{}]*?"data":\["([A-Za-z0-9+/=]*)","base64"\][^{}]*\}|"account":\{[^{}]*?"data":\["([A-Za-z0-9+/=]*)","base64"\][^{}]*\},"pubkey":"([1-9A-HJ-NP-Za-km-z]+)"/g;
-const COMPLETE_TAIL_RE = /\]\s*,\s*"id"\s*:\s*\d+\s*\}\s*$/;
+const COMPLETE_TAIL_RE = /\]\s*(?:,\s*"id"\s*:\s*\d+\s*)?\}\s*$/;
 
 // Regex captures are V8 sliced strings that pin the whole response chunk; copy keys so stored keys don't retain hundreds of MB.
 const freshString = (s: string) => Buffer.from(s, 'latin1').toString('latin1');

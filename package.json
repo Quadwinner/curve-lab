@@ -11,7 +11,8 @@
     "test": "vitest run",
     "indexer": "tsx scripts/indexer.ts",
     "relay": "tsx scripts/relay.ts",
-    "fixtures": "tsx scripts/capture-fixtures.ts"
+    "fixtures": "tsx scripts/capture-fixtures.ts",
+    "publish-data": "bash scripts/publish-data.sh"
   },
   "dependencies": {
     "@meteora-ag/dynamic-bonding-curve-sdk": "^1.5.13",

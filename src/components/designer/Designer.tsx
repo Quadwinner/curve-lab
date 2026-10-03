@@ -1,12 +1,17 @@
 'use client';
+import dynamic from 'next/dynamic';
 import { useMemo, useState } from 'react';
 import { LineChart } from '@/components/charts/LineChart';
 import type { Feature } from '@/lib/data/types';
 import { buildDesign, DEFAULT_FORM, designSnippet, QUOTES, type DesignerForm } from '@/lib/designer/build';
 import { fmtQuote } from '@/lib/format';
-import { CreateConfigButton } from './CreateConfigButton';
 import { SimilarPresets } from './SimilarPresets';
-import { WalletProviders } from './WalletProviders';
+
+// Wallet adapters detect browser extensions and auto-connect, so their markup can never match the server render.
+const DevnetCreate = dynamic(() => import('./DevnetCreate').then((m) => m.DevnetCreate), {
+  ssr: false,
+  loading: () => <p className="font-mono text-xs text-ink-3">loading wallet…</p>,
+});
 
 type NumKey = { [K in keyof DesignerForm]: DesignerForm[K] extends number ? K : never }[keyof DesignerForm];
 
@@ -115,9 +120,7 @@ export function Designer({ features }: { features: Feature[] }) {
               <h2 className="font-display text-xl text-ink">Create it on devnet</h2>
               <p className="mb-3 mt-0.5 text-xs text-ink-3">Signs a real DBC createConfig with your wallet on Solana devnet (free faucet SOL). Your wallet becomes the fee claimer.</p>
               {form.quote === 'SOL' ? (
-                <WalletProviders>
-                  <CreateConfigButton config={result.config} />
-                </WalletProviders>
+                <DevnetCreate config={result.config} />
               ) : (
                 <p className="text-sm text-ink-3">Devnet creation is available for SOL-quoted settings.</p>
               )}

@@ -61,6 +61,7 @@ if (cache.size === 0 && !partial) {
     onAccount: (k, d) => cache.set(k, configEntryFromBody(d)),
   });
   log(`configs streamed: ${r.count} (${(r.bytes / 1e6).toFixed(0)} MB)`);
+  await saveConfigCache(values.cache!, cache);
 }
 
 const presetIndex = new Map<string, number>();

@@ -11,4 +11,5 @@ export function u128(b: Uint8Array, o: number): bigint {
   return u64(b, o) | (u64(b, o + 8) << 64n);
 }
 
-export const pubkey = (b: Uint8Array, o: number): string => bs58.encode(b.subarray(o, o + 32));
+// bs58 builds strings char by char; the resulting V8 cons-string costs ~1 KB vs ~74 B flattened, which matters for millions of keys.
+export const pubkey = (b: Uint8Array, o: number): string => Buffer.from(bs58.encode(b.subarray(o, o + 32)), 'latin1').toString('latin1');

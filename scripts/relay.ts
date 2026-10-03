@@ -102,7 +102,7 @@ async function handleLogs(signature: string, logs: string[], failed: boolean) {
   const kind = kindFromLogs(logs, { failed });
   if (!kind) return;
   try {
-    const tx = await rpcCall<TxAccounts | null>(RPC, 'getTransaction', [signature, { encoding: 'json', maxSupportedTransactionVersion: 0, commitment: 'confirmed' }], 20_000);
+    const tx = await rpcCall<TxAccounts | null>(RPC, 'getTransaction', [signature, { encoding: 'json', maxSupportedTransactionVersion: 1, commitment: 'confirmed' }], 20_000);
     if (!tx) return;
     const keys = [...tx.transaction.message.accountKeys, ...(tx.meta?.loadedAddresses?.writable ?? []), ...(tx.meta?.loadedAddresses?.readonly ?? [])];
     const accounts = await rpcCall<{ value: ({ owner: string; space: number } | null)[] }>(RPC, 'getMultipleAccounts', [keys, { encoding: 'base64', dataSlice: { offset: 0, length: 0 } }], 20_000);

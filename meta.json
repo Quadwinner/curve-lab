@@ -1,0 +1,25 @@
+{
+ "generatedAt": 1791062880,
+ "refSlot": 453050865,
+ "refTime": 1791061937,
+ "totals": {
+  "pools": 1734247,
+  "configs": 490202,
+  "presets": 65107,
+  "listed": 5750,
+  "detailed": 2168,
+  "organic": 259315,
+  "instant": 678342,
+  "open": 796590
+ },
+ "skipped": 0,
+ "market": {
+  "prefundedGroups": 914,
+  "prefundedLaunches": 909860,
+  "marketOrganic": 9692,
+  "marketEligible": 742213,
+  "postCount": 883851,
+  "postAbove": 453618,
+  "postDead": 406717
+ }
+}

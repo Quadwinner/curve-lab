@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: curve-lab-relay
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npx tsx scripts/relay.ts
+    healthCheckPath: /health
+    envVars:
+      - key: SOLAMI_API_KEY
+        sync: false
+      - key: RPC_URL
+        value: https://api.mainnet-beta.solana.com
